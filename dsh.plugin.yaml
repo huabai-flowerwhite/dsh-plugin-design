@@ -22,11 +22,22 @@ cordis:
 
 capabilities:
   provides:
-    - com.example.dsh.plugin-design.tools.dshpd
+    - com.example.dsh.plugin-design.tool.dshpd_discover
+    - com.example.dsh.plugin-design.tool.dshpd_inspect
+    - com.example.dsh.plugin-design.tool.dshpd_analyze
+    - com.example.dsh.plugin-design.tool.dshpd_design
+    - com.example.dsh.plugin-design.tool.dshpd_approve
+    - com.example.dsh.plugin-design.tool.dshpd_backup
+    - com.example.dsh.plugin-design.tool.dshpd_apply
+    - com.example.dsh.plugin-design.tool.dshpd_rollback
+    - com.example.dsh.plugin-design.tool.dshpd_status
+    - com.example.dsh.plugin-design.tool.dshpd_report
+    - com.example.dsh.plugin-design.route.discover
 
   consumes:
     - ctx.tools
     - ctx.fs
+    - ctx.webServer
     - ctx.sandboxPolicy
 
 events:

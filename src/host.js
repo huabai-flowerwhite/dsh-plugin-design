@@ -256,7 +256,7 @@ export default {
           if (/globalThis\s*\.\s*\w+\s*=/.test(line)) addIssue(issues, 'GLOBALTHIS_PATCH', 'BLOCKER', 'security', '修改 globalThis', 'DH-TP-SDK 禁止修改 globalThis。', loc)
           if (/window\s*\.\s*\w+\s*=/.test(line)) addIssue(issues, 'GLOBALTHIS_PATCH', 'BLOCKER', 'security', '修改 window 全局', '禁止修改全局对象。', loc)
           if (/\b\w+\.prototype\.\w+\s*=/.test(line)) addIssue(issues, 'PROTOTYPE_PATCH', 'BLOCKER', 'security', 'Monkey/Prototype Patch', '禁止修改原型。', loc)
-          if (/\bas\s+any\b|\bas\s+unknown\b/.test(line)) addIssue(issues, 'PRIVATE_API', 'CRITICAL', 'compat', '使用 as any / as unknown 绕过类型', '禁止访问 undocumented private API。', loc)
+          if (/\bas\s+any\b|\bas\s+unknown\b/.test(line)) addIssue(issues, 'PRIVATE_API', 'CRITICAL', 'compat', '类型断言绕过类型检查', '禁止访问 undocumented private API。', loc)
           if (/^\s*(let|var)\s+(currentSession|currentAgent|currentRequest|globalState)\b/.test(line)) addIssue(issues, 'GLOBAL_MUTABLE_STATE', 'CRITICAL', 'session', '模块级可变全局状态', '禁止 global session/agent/request state，应绑定 agent/session/request scope。', loc)
           if (/(rm\s+-rf|git\s+reset\s+--hard|git\s+clean\s+-fd|git\s+push\s+--force|rmdir\s+\/s)/i.test(line)) addIssue(issues, 'DANGEROUS_COMMAND', 'BLOCKER', 'security', '危险破坏性命令', '默认禁止不可逆破坏性操作。', loc)
           if (/exec\s*\(\s*["'][^"']*\+/.test(line) || /exec\s*\(\s*`[^`]*\$\{/.test(line)) addIssue(issues, 'COMMAND_INJECTION', 'CRITICAL', 'security', '疑似命令注入', '禁止 exec 拼接用户输入，优先 spawn(command, args)。', loc)

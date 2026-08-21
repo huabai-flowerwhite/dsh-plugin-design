@@ -8,15 +8,19 @@
 
 ```text
 dsh-plugin-design/
-├── package.json       # npm 包：exports + dsh.client + dsh.bundle
-├── dsh.plugin.yaml    # DH-TP-SDK manifest
-├── cordis.patch.yml   # 挂载参考：host composition insert row
-├── README.md / design.md
-├── lib/client.js      # Client 半体：factory-form bundle（Settings 设置页）
-└── src/
-    ├── index.js       # 入口 → host.js
-    ├── host.js        # Host 半体：10 个 dshpd_* 工具
-    └── client.js      # Client 源码（构建产物见 lib/client.js）
+├── install.ps1 / install.sh   # 一键安装（node_modules 链接 + cordis.patch.yml insert）
+├── package.json               # npm 包：exports + dsh.client + dsh.bundle + scripts.test
+├── dsh.plugin.yaml            # DH-TP-SDK manifest
+├── cordis.patch.yml           # 挂载参考：host composition insert row
+├── README.md / design.md / LICENSE / .gitignore
+├── lib/client.js              # Client 半体：factory-form bundle（Settings 设置页）
+├── src/
+│   ├── index.js               # 入口 → host.js
+│   ├── host.js                # Host 半体：10 个 dshpd_* 工具
+│   └── client.js              # Client 源码（构建产物见 lib/client.js）
+└── tests/
+    ├── README.md              # 测试矩阵
+    └── manifest.test.mjs      # DH-TP-SDK 规范冒烟测试（node --test）
 ```
 
 ## 能力
@@ -97,6 +101,23 @@ bash install.sh
 | HTTP 路由前缀 | `/<包名>/<动作>`（`/dsh-plugin-design/discover`） | 同名路由注册会 throw |
 
 `install.ps1` / `install.sh` 是**各自仓库根目录的普通文件**，用户在各自的 clone 目录里执行，不会互相冲突；只要坚持「一个插件一个唯一前缀」，多插件共存安全。
+
+## 安全边界
+
+- Security Level **S2** / Permission Level **P2**：需读写目标插件的 workspace 文件（发现/检查/备份/修改/回滚）。
+- 网络/子进程/shell/密钥默认**全部关闭**（`network.outbound: false`、`subprocess.enabled: false`、`shell.enabled: false`、`credentials.access: false`）。
+- 不修改 Core、不用 private API、不改 `globalThis`/原型；两阶段门控 + 备份回滚保证「分析先于修改、确认后才改、失败可回滚」。
+- Host 半体仅在「用户确认后」才经 `dshpd_backup`/`dshpd_apply` 写文件；静态分析为启发式，非权威认证。
+
+## 规范合规测试
+
+本插件自身遵循 DH-TP-SDK 规范，并提供静态冒烟测试：
+
+```bash
+npm test            # 等价于 node --test tests/
+```
+
+覆盖：manifest 必填字段、最小权限（网络/子进程/shell/密钥关闭）、package.json 三处导出、cordis.patch.yml 仅 insert 不替换 Core row、源码无高危模式。详见 `tests/README.md`。
 
 ## 已知限制
 
