@@ -1,8 +1,16 @@
 # dsh plugin design
 
-面向 DeepSeek Harness（dsh）第三方插件生态的 **Plugin Design / Migration / Compliance Agent**：发现第三方插件、检查其源码与配置、对照 DH-TP-SDK 工程化规范做静态分析、生成 `design.md`，经用户确认后逐项修改并支持备份与回滚。
+面向 DeepSeek Harness（dsh）第三方插件生态的 **Plugin Design / Migration / Compliance Agent**：发现第三方插件、检查其源码与配置、对照 DH-TP-SDK 工程化规范做静态分析、生成 `design.md`，经用户确认后对插件逐项修改并支持备份与回滚。
 
 > DH-TP-SDK 是工程化规范，Bronze/Silver/Gold、P0–P4、S0–S4 均非 DeepSeek 官方认证。
+
+## 解决痛点
+
+```text
+dsh用户开发/部署各类插件时，经常遇到兼容问题、引发系统性报错。
+问题根源于各类插件可能未遵循dsh的开发规范、以及各类插件并不能完全做到“随用随丢”的独立插件理念。
+本插件针对开发/部署插件提供设计规范.md，并进行技术规范改造。
+```
 
 ## 目录结构
 
@@ -32,6 +40,7 @@ dsh-plugin-design/
 
 ```text
 使用dsh plugin design插件，输出对 <插件名> 插件进行规范修改的design.md文件，然后询问我意见后进行规范修改
+可参考目录中的How‑to Showcase.png。
 ```
 
 两阶段工作流：
