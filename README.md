@@ -8,7 +8,21 @@
 
 - dsh用户开发/部署各类插件时，经常遇到兼容问题、引发系统性报错。
 - 问题根源于各类插件可能未遵循dsh的开发规范、以及各类插件并不能完全做到“随用随丢”的独立插件理念。
-- 本插件针对开发/部署插件提供设计规范.md，并进行技术规范改造。
+- 本插件针对开发/部署插件提供设计规范.md（design.md），并进行技术规范改造。（本人的dsh plugin design、dsh plugin manager、dsh ui skin都经过本插件开发验证）
+
+## 使用方法（聊天框入口）
+
+- 使用dsh plugin design插件，输出对 <插件名> 插件进行规范修改的design.md文件，然后询问我意见后进行规范修改
+- 可参考目录中的How‑to Showcase.png。(design.md未在此处展示)
+
+   ![How‑to Showcase](<How‑to Showcase.png>)
+
+两阶段工作流：
+
+- **阶段 1（只读分析）**：`discover → inspect → analyze → design`（生成 design.md），此阶段绝不修改源码。
+- **阶段 2（你确认后才修改）**：`approve`（门控）→ `backup`（备份）→ `apply`（逐项原子替换）→ `rollback` / `report`。
+
+安全边界：分析先于修改、设计先于执行；未确认前不修改；修改前备份、失败可回滚；不修改 Core、不用 private API。
 
 ## 目录结构
 
@@ -34,19 +48,6 @@ dsh-plugin-design/
 - **Host 半体**：10 个模型工具 —— `dshpd_discover` / `dshpd_inspect` / `dshpd_analyze` / `dshpd_design` / `dshpd_approve` / `dshpd_backup` / `dshpd_apply` / `dshpd_rollback` / `dshpd_status` / `dshpd_report`。
 - **Client 半体**：Settings 设置页（「设置 → dsh plugin design」），展示使用方法、两阶段工作流、工具清单与安全边界。
 
-## 使用方法（聊天框入口）
-
-```text
-使用dsh plugin design插件，输出对 <插件名> 插件进行规范修改的design.md文件，然后询问我意见后进行规范修改
-可参考目录中的How‑to Showcase.png。
-```
-
-两阶段工作流：
-
-- **阶段 1（只读分析）**：`discover → inspect → analyze → design`（生成 design.md），此阶段绝不修改源码。
-- **阶段 2（你确认后才修改）**：`approve`（门控）→ `backup`（备份）→ `apply`（逐项原子替换）→ `rollback` / `report`。
-
-安全边界：分析先于修改、设计先于执行；未确认前不修改；修改前备份、失败可回滚；不修改 Core、不用 private API。
 
 ## 安装（一条命令）
 
