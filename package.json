@@ -1,0 +1,28 @@
+{
+  "name": "dsh-plugin-design",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "dsh plugin design — DH-TP-SDK 第三方插件规范适配与自动修改元插件",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    },
+    "compatibility": {
+      "apiLevel": 1,
+      "harness": ">=0.1.0-rc.7"
+    }
+  }
+}

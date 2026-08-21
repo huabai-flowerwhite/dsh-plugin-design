@@ -1,0 +1,82 @@
+manifestVersion: 1
+
+plugin:
+  id: com.example.dsh.plugin-design
+  name: dsh plugin design
+  version: 1.0.0
+  description: >-
+    DH-TP-SDK 第三方插件规范适配与自动修改元插件：发现、检查、静态分析、
+    生成 design.md、审批门控、备份/逐项修改/回滚，并提供 Settings UI。
+
+runtime:
+  harness:
+    min: 0.1.0-rc.7
+    max: "<0.2.0"
+
+  node:
+    min: 22
+    max: "<25"
+
+cordis:
+  apiLevel: 1
+
+capabilities:
+  provides:
+    - com.example.dsh.plugin-design.tools.dshpd
+
+  consumes:
+    - ctx.tools
+    - ctx.fs
+    - ctx.sandboxPolicy
+
+events:
+  subscribes: []
+
+  waterfall: []
+
+permissions:
+  filesystem:
+    read:
+      - workspace/**
+    write:
+      - workspace/**
+
+  network:
+    outbound: false
+    hosts: []
+
+  subprocess:
+    enabled: false
+
+  shell:
+    enabled: false
+
+  credentials:
+    access: false
+
+resources:
+  maxRuntimeMs: 30000
+  maxMemoryMb: 512
+  maxOutputBytes: 1048576
+  maxProcesses: 1
+  maxConcurrentTasks: 8
+
+lifecycle:
+  unloadable: true
+  reversible: true
+
+session:
+  modelVisibleState: false
+  durableState: false
+
+profiles:
+  supported:
+    - web
+
+security:
+  level: S2
+  sandboxRequired: true
+
+compatibility:
+  apiLevelPolicy: strict
+  breakingChangesPolicy: semver

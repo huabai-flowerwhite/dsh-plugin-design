@@ -1,0 +1,13 @@
+# dsh plugin design — 挂载参考（host composition insert）
+#
+# 把本包挂到 host composition（web profile 的 cordis.patch.yml）：
+#   - Host 半体（10 个 dshpd_* 工具）→ 全局工具
+#   - Client 半体（settings.section 设置页）→ 全局 UI（dsh-client-modules 扫描 dsh.client）
+#
+# 前置：本包必须是 node_modules 可解析的包（$DSH_HOME/profiles/node_modules/dsh-plugin-design -> 本目录，
+#       或发布到 npm 后 npm install dsh-plugin-design）。
+#
+# 用法：把下面这段 insert 合并进 $DSH_HOME/profiles/web/cordis.patch.yml，然后重启 dsh。
+- insert:
+    - id: dsh-plugin-design
+      name: 'dsh-plugin-design'
