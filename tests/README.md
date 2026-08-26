@@ -3,9 +3,9 @@
 ## 运行
 
 ```bash
-npm test          # 等价于 node --test tests/
+npm test          # 等价于 node --test（自动发现 tests/ 下的 .test.mjs）
 # 或
-node --test tests/
+node --test tests/manifest.test.mjs
 ```
 
 ## 覆盖范围（DH-TP-SDK 规范冒烟）

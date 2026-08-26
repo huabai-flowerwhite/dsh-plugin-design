@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-design",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "dsh plugin design — DH-TP-SDK 第三方插件规范适配与自动修改元插件",
@@ -22,10 +22,10 @@
     },
     "compatibility": {
       "apiLevel": 1,
-      "harness": ">=0.1.0-rc.7"
+      "harness": ">=0.1.1-rc.2"
     }
   },
   "scripts": {
-    "test": "node --test tests/"
+    "test": "node --test"
   }
 }

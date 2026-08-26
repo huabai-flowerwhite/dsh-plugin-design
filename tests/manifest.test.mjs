@@ -26,6 +26,8 @@ test('dsh.plugin.yaml 存在且含 DH-TP-SDK 必填字段', () => {
   assert.match(raw, /^\s+id:\s*com\.example\.dsh\.plugin-design\s*$/m, 'plugin.id 应为全局唯一 ID')
   assert.match(raw, /^runtime:/m, '应有 runtime 块')
   assert.match(raw, /^\s+harness:/m, '应有 runtime.harness 兼容范围')
+  assert.match(raw, /^\s+min:\s*0\.1\.1-rc\.2\s*$/m, 'runtime.harness.min 应对齐 0.1.1-rc.2')
+  assert.match(raw, /^\s+max:\s*"<0\.2\.0"\s*$/m, 'runtime.harness.max 应为 <0.2.0')
   assert.match(raw, /^cordis:/m, '应有 cordis 块')
   assert.match(raw, /^\s+apiLevel:\s*1\s*$/m, 'cordis.apiLevel 应为 1')
   assert.match(raw, /^capabilities:/m, '应有 capabilities')
@@ -56,6 +58,7 @@ test('package.json 声明三处导出 + dsh 兼容信息', () => {
   assert.ok(pkg.dsh && pkg.dsh.client && pkg.dsh.client.platform === 'web', 'dsh.client.platform 应为 web')
   assert.ok(pkg.dsh && pkg.dsh.bundle && pkg.dsh.bundle.patch, 'dsh.bundle.patch 应指向 cordis.patch.yml')
   assert.ok(pkg.dsh && pkg.dsh.compatibility && pkg.dsh.compatibility.apiLevel, '应声明 compatibility.apiLevel')
+  assert.equal(pkg.dsh.compatibility.harness, '>=0.1.1-rc.2', 'compatibility.harness 应对齐 0.1.1-rc.2')
 })
 
 test('cordis.patch.yml 仅 insert 自己的 row，不替换 Core row', () => {

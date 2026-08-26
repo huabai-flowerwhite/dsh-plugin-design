@@ -3,14 +3,14 @@ manifestVersion: 1
 plugin:
   id: com.example.dsh.plugin-design
   name: dsh plugin design
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     DH-TP-SDK 第三方插件规范适配与自动修改元插件：发现、检查、静态分析、
     生成 design.md、审批门控、备份/逐项修改/回滚，并提供 Settings UI。
 
 runtime:
   harness:
-    min: 0.1.0-rc.7
+    min: 0.1.1-rc.2
     max: "<0.2.0"
 
   node:

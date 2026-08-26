@@ -48,6 +48,12 @@ dsh-plugin-design/
 - **Host 半体**：10 个模型工具 —— `dshpd_discover` / `dshpd_inspect` / `dshpd_analyze` / `dshpd_design` / `dshpd_approve` / `dshpd_backup` / `dshpd_apply` / `dshpd_rollback` / `dshpd_status` / `dshpd_report`。
 - **Client 半体**：Settings 设置页（「设置 → dsh plugin design」），展示使用方法、两阶段工作流、工具清单与安全边界。
 
+## 兼容性（Harness 版本）
+
+- 本插件对齐 `@deepseek-ai/dsh` `0.1.1-rc.2`（manifest `runtime.harness.min` 与 package.json `dsh.compatibility.harness` 均为 `>=0.1.1-rc.2`）。
+- Settings 入口当前走 `settings.section`（整页说明页）。Harness 自 `0.1.0-rc.7` 起另提供「插件配置卡片」档位（`settings.plugin.item` + Host `installSettingsSection` + Client `ctx.settingsScope`），用于暴露可持久化配置（默认扫描根/安全等级）；本插件尚未迁移到该档位（纯说明页无需持久化配置）。
+- DH-TP-SDK 的 Bronze/Silver/Gold、P0–P4、S0–S4 为工程化规范等级，非 DeepSeek 官方认证。
+
 
 ## 安装（一条命令）
 
@@ -122,7 +128,7 @@ bash install.sh
 本插件自身遵循 DH-TP-SDK 规范，并提供静态冒烟测试：
 
 ```bash
-npm test            # 等价于 node --test tests/
+npm test            # 等价于 node --test（自动发现 tests/ 下的 .test.mjs）
 ```
 
 覆盖：manifest 必填字段、最小权限（网络/子进程/shell/密钥关闭）、package.json 三处导出、cordis.patch.yml 仅 insert 不替换 Core row、源码无高危模式。详见 `tests/README.md`。
