@@ -33,6 +33,8 @@ dsh-plugin-design/
 ├── dsh.plugin.yaml            # DH-TP-SDK manifest
 ├── cordis.patch.yml           # 挂载参考：host composition insert row
 ├── README.md / design.md / LICENSE / .gitignore
+├── DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md   # DH-TP-SDK 规范依据（内置）
+├── deepseek-harness-product-technical-framework.md            # Harness 架构依据（内置）
 ├── lib/client.js              # Client 半体：factory-form bundle（Settings 设置页）
 ├── src/
 │   ├── index.js               # 入口 → host.js
@@ -135,7 +137,7 @@ npm test            # 等价于 node --test（自动发现 tests/ 下的 .test.m
 
 ## 已知限制
 
-1. manifest 解析为行级启发式，非完整 YAML 解析。
-2. 静态分析为启发式规则，非权威认证。
+1. manifest 解析为「缩进感知」的启发式解析（支持嵌套点路径、兼容 CRLF），但仍非完整 YAML 解析（无 anchor/折叠标量/flow map）。
+2. 静态分析为启发式规则，非权威认证；`WATERFALL_NEXT` 仅对「确实注册了 waterfall 监听」的非测试源码生效。
 3. 任务状态（approval/backup/journal）为进程内内存态，进程重启即失。
 4. git 状态/测试运行依赖 Agent 侧 shell 工具，插件自身不直接跑 shell。

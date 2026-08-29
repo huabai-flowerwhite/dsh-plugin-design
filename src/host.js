@@ -40,8 +40,27 @@ export default {
     async function tryReadText(p) {
       try { return await readText(p) } catch (e) { return null }
     }
-    async function writeText(p, content) {
-      return fs.writeText(await fs.resolve(p), content)
+    // Resolve the per-call sandbox policy for a mutation, mirroring what the
+    // built-in `write`/`edit` tools do: `ctx.sandboxPolicy.resolve({ session })`
+    // so the session's cwd becomes the workspace boundary. Returns undefined for
+    // a backend that does not confine (the bare backend ignores the policy anyway).
+    function resolveSandboxPolicy(exec) {
+      const sp = ctx.get('sandboxPolicy')
+      if (!sp || typeof sp.resolve !== 'function') return undefined
+      try {
+        const session = exec && exec.agent ? exec.agent.session : undefined
+        return sp.resolve(session ? { session } : undefined)
+      } catch (e) {
+        return undefined
+      }
+    }
+    async function writeText(p, content, exec) {
+      const policy = resolveSandboxPolicy(exec)
+      const resolveOpts = {}
+      if (policy && policy.workspaceRoot) resolveOpts.cwd = policy.workspaceRoot
+      if (exec && exec.signal) resolveOpts.signal = exec.signal
+      const target = await fs.resolve(p, Object.keys(resolveOpts).length > 0 ? resolveOpts : undefined)
+      return fs.writeText(target, content, undefined, exec && exec.signal, policy)
     }
     function renderText(_args, value) {
       return [{ type: 'text', text: JSON.stringify(value, null, 2) }]
@@ -183,20 +202,36 @@ export default {
       }
     }
 
+    // Indentation-aware heuristic YAML parse: builds dotted paths for nested keys
+    // (`plugin.id`, `runtime.harness`, `cordis.apiLevel`) while keeping top-level
+    // keys (`permissions`, `resources`, `lifecycle`) as plain mapping markers.
+    // Not a full YAML parser (no anchors/folded-scalar/flow-map handling); the
+    // caller must treat it as a best-effort field probe.
     function parseManifestHeuristic(raw) {
       if (raw === null) return null
       const out = {}
-      for (const line of raw.split('\n')) {
+      const stack = [] // { indent, key } for open parent mappings
+      for (const line of raw.split(/\r?\n/)) {
         if (/^\s*#/.test(line) || line.trim() === '') continue
-        const m = line.match(/^([A-Za-z0-9_.-]+):\s*(.*)$/)
-        if (m) {
-          const key = m[1]
-          const val = m[2].trim()
-          if (val === '' || val === '{}' || val === '[]') out[key] = {}
-          else out[key] = val
+        const indent = (line.match(/^\s*/) || [''])[0].length
+        const m = line.match(/^(\s*)([A-Za-z0-9_.-]+):\s*(.*)$/)
+        if (!m) continue // list items (`- ...`), folded-scalar continuations, etc.
+        const key = m[2]
+        const val = m[3].trim()
+        while (stack.length > 0 && stack[stack.length - 1].indent >= indent) stack.pop()
+        const path = stack.map((s) => s.key).concat([key]).join('.')
+        if (val === '' || val === '{}' || val === '[]') {
+          out[path] = {}
+          stack.push({ indent, key })
+        } else {
+          out[path] = val
         }
       }
       return out
+    }
+
+    function isTestSource(p) {
+      return /(^|[\\/])(tests?|__tests__)([\\/]|$)/.test(p) || /\.(test|spec)\.[^.]+$/.test(p)
     }
 
     function addIssue(issues, id, severity, category, title, detail, file) {
@@ -264,12 +299,19 @@ export default {
         }
       }
 
-      let hasWaterfallHint = false, hasNextCall = false
-      for (const f of joined) {
-        if (/pre-step|pre-execute|post-execute|llm\/stream|agent\/request|waterfall/i.test(f.content)) hasWaterfallHint = true
-        if (/\bnext\s*\(/.test(f.content)) hasNextCall = true
+      function registersWaterfallListener(line) {
+        return /\.on\s*\(\s*["'][^"']*?(?:agent\/pre-step|agent\/request|llm\/stream|tools\/pre-execute|tools\/execute|tools\/post-execute|fs\/write-intent|fs\/edit-intent)/i.test(line)
+          || /waterfall\s*\(\s*["'][^"']*?(?:agent\/pre-step|agent\/request|llm\/stream|tools\/pre-execute|tools\/execute|tools\/post-execute|fs\/write-intent|fs\/edit-intent)/i.test(line)
       }
-      if (hasWaterfallHint && !hasNextCall) {
+      let hasWaterfallListener = false, hasNextCall = false
+      for (const f of joined) {
+        if (isTestSource(f.path)) continue
+        for (const line of f.content.split('\n')) {
+          if (registersWaterfallListener(line)) hasWaterfallListener = true
+          if (/\bnext\s*\(/.test(line)) hasNextCall = true
+        }
+      }
+      if (hasWaterfallListener && !hasNextCall) {
         addIssue(issues, 'WATERFALL_NEXT', 'CRITICAL', 'compat', 'waterfall listener 疑似未调用 next()', 'waterfall listener MUST 调用并返回 next()，除非是终止型 interceptor。', null)
       }
 
@@ -348,7 +390,7 @@ export default {
           topLevel: topLevel,
           sourceFiles: sources.map((s) => s.path),
           isGitRepo: isGitRepo,
-          note: 'git status/commits require shell and are NOT_VERIFIED here; manifestParsed is a heuristic line-level parse, not a full YAML parse.',
+          note: 'git status/commits require shell and are NOT_VERIFIED here; manifestParsed is an indentation-aware heuristic parse (dotted paths for nested keys), not a full YAML parse.',
         }
       })
 
@@ -364,7 +406,22 @@ export default {
         const blockers = issues.filter((i) => i.severity === 'BLOCKER').length
         const criticals = issues.filter((i) => i.severity === 'CRITICAL').length
         const overall = blockers > 0 ? 'BLOCKED' : (criticals > 0 ? 'NEEDS_REVIEW' : 'READY_TO_MODIFY')
-        return { pluginPath: args.pluginPath, issueCount: issues.length, blockers, criticals, scores, overall, issues, note: 'heuristic static scan; not authoritative, not a DeepSeek official certification.' }
+        return {
+          pluginPath: args.pluginPath,
+          issueCount: issues.length,
+          blockers,
+          criticals,
+          scores,
+          overall,
+          issues,
+          verdictRule: 'overall = BLOCKED（任意 BLOCKER）｜NEEDS_REVIEW（任意 CRITICAL）｜READY_TO_MODIFY（其余）。HIGH/MEDIUM/LOW/INFO 会扣对应维度分，但不改变 overall 结论。',
+          knownLimitations: [
+            'manifest 字段由「缩进感知」的行级启发式解析，非完整 YAML 解析（无 anchor/多行折叠标量/flow map 处理）',
+            'waterfall next() 检查仅针对「确实注册了 waterfall 事件监听」的源码文件，且排除 tests/spec 文件',
+            '静态扫描为启发式规则，非权威认证',
+          ],
+          note: 'heuristic static scan; not authoritative, not a DeepSeek official certification.',
+        }
       })
 
     reg('dshpd_design',
@@ -374,12 +431,12 @@ export default {
         mode: { type: 'string', enum: ['create', 'version', 'overwrite'], description: 'create (default, refuse if exists) | version (write next design.vN.md) | overwrite.' },
       },
       ['pluginPath'],
-      async (args) => {
+      async (args, exec) => {
         const dir = args.pluginPath + '/.dsh-plugin-design'
         const dirTarget = await fs.resolve(dir)
         const existing = await (async () => { try { return await fs.stat(dirTarget) } catch (e) { return undefined } })()
         if (existing === undefined) {
-          await writeText(dir + '/.keep', '')
+          await writeText(dir + '/.keep', '', exec)
         }
         const mode = args.mode || 'create'
         let designName = 'design.md'
@@ -393,7 +450,7 @@ export default {
         }
         const { issues } = await analyzePlugin(args.pluginPath)
         const template = '# dsh plugin design — design.md\n\n> 依据 DH-TP-SDK 工程化第三方插件规范生成的可执行修改设计。\n> 注意：Bronze/Silver/Gold、P0-P4、S0-S4 为本工程化规范等级，不是 DeepSeek 官方认证。\n\n## 1. Target Plugin\n\n- Plugin ID: UNKNOWN\n- Name: ' + basename(args.pluginPath) + '\n- Path: ' + args.pluginPath + '\n\n## 2. Executive Summary\n\n（待补充：当前插件做什么、当前架构、是否已适配 dsh、最大兼容/安全/生命周期风险、是否存在 Core modification / private API / global mutable state）\n\n## 3. Current Architecture\n\n（逐项：Plugin Entry / Services / Tools / Events / Session / Filesystem / Network / Subprocess / Bundle；不存在则写 Not detected）\n\n## 4. Static Scan Summary\n\n- Issues found: ' + issues.length + '\n' + issues.map((i) => '- [' + i.severity + '] ' + i.id + ' — ' + i.title + (i.file ? ' (' + i.file + ')' : '')).join('\n') + '\n\n## 5. Modification Plan\n\n（逐项 M001/M002/...：ID、Reason、File、Before、After、Risk、Validation、Rollback）\n\n## 6. Verification\n\n（typecheck/lint/unit/integration/lifecycle/session/concurrency/security/compatibility；无则 NOT_AVAILABLE）\n\n## 7. Approval\n\n（用户确认后才执行修改；未确认前严禁修改目标插件源码）\n'
-        await writeText(dir + '/' + designName, template)
+        await writeText(dir + '/' + designName, template, exec)
         return { wrote: true, designPath: dir + '/' + designName, mode, issueCount: issues.length }
       })
 
@@ -425,7 +482,7 @@ export default {
         files: { type: 'array', items: { type: 'string' }, description: 'Absolute paths of the files the design plans to modify.' },
       },
       ['approvalToken', 'files'],
-      async (args) => {
+      async (args, exec) => {
         const task = taskByToken(args.approvalToken)
         if (!task) return { error: 'DENIED: invalid or missing approvalToken' }
         if (!Array.isArray(args.files) || args.files.length === 0) return { error: 'files must be a non-empty array of absolute paths' }
@@ -437,7 +494,7 @@ export default {
           try {
             const content = await readText(p)
             const bname = String(i) + '-' + basename(p)
-            await writeText(task.pluginPath + '/.dsh-plugin-design/backup/' + backupId + '/' + bname, content)
+            await writeText(task.pluginPath + '/.dsh-plugin-design/backup/' + backupId + '/' + bname, content, exec)
             records.push({ index: i, path: p, resolved: (await fs.resolve(p)).displayPath, backupName: bname })
           } catch (e) {
             failures.push({ path: p, error: String(e && e.message ? e.message : e) })
@@ -460,14 +517,18 @@ export default {
         replaceAll: { type: 'boolean', description: 'Replace every match instead of requiring exactly one.' },
       },
       ['approvalToken', 'backupId', 'filePath', 'oldText', 'newText'],
-      async (args) => {
+      async (args, exec) => {
         const task = taskByToken(args.approvalToken)
         if (!task) return { error: 'DENIED: invalid or missing approvalToken' }
         if (task.backupId !== args.backupId) return { error: 'DENIED: backupId mismatch' }
         if (!task.files || !task.files.some((f) => f.path === args.filePath || f.resolved === args.filePath)) return { error: 'DENIED: filePath not in the backed-up file set' }
         if (typeof args.oldText !== 'string' || args.oldText.length === 0) return { error: 'oldText must be a non-empty string' }
-        const target = await fs.resolve(args.filePath)
-        const outcome = await fs.editText(target, { oldString: args.oldText, newString: args.newText, replaceAll: args.replaceAll === true })
+        const policy = resolveSandboxPolicy(exec)
+        const resolveOpts = {}
+        if (policy && policy.workspaceRoot) resolveOpts.cwd = policy.workspaceRoot
+        if (exec && exec.signal) resolveOpts.signal = exec.signal
+        const target = await fs.resolve(args.filePath, Object.keys(resolveOpts).length > 0 ? resolveOpts : undefined)
+        const outcome = await fs.editText(target, { oldString: args.oldText, newString: args.newText, replaceAll: args.replaceAll === true }, undefined, exec && exec.signal, policy)
         task.journal.push({ time: new Date().toISOString(), filePath: args.filePath, operation: 'edit' })
         return { applied: true, filePath: args.filePath, before: outcome.before, after: outcome.after, journalCount: task.journal.length }
       })
@@ -478,7 +539,7 @@ export default {
         backupId: { type: 'string', description: 'backupId from dshpd_backup.' },
       },
       ['backupId'],
-      async (args) => {
+      async (args, exec) => {
         let owner = null
         for (const t of tasks.values()) if (t.backupId === args.backupId) owner = t
         if (!owner) return { error: 'backupId not found in task state' }
@@ -487,7 +548,7 @@ export default {
         for (const rec of owner.files || []) {
           try {
             const content = await readText(owner.pluginPath + '/.dsh-plugin-design/backup/' + args.backupId + '/' + rec.backupName)
-            await writeText(rec.path, content)
+            await writeText(rec.path, content, exec)
             restored.push(rec.path)
           } catch (e) {
             failures.push({ path: rec.path, error: String(e && e.message ? e.message : e) })
