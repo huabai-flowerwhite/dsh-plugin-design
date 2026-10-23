@@ -840,6 +840,18 @@ export function analyzeModel(model) {
         file: String(clientExport === null ? model.defaultClientBundlePath : clientExport.target),
       })
     }
+    const scripts = pkg !== null && isPlainObject(pkg.scripts) ? pkg.scripts : {}
+    const hasClientBuild = Object.entries(scripts).some(([name, value]) => typeof value === 'string'
+      && /^(?:build|prepare|prepack|prepublishOnly)/i.test(name)
+      && /client|bundle|build|tsc|tsdown|esbuild|rollup|vite/i.test(value))
+    if (Array.isArray(model.clientSourceFiles) && model.clientSourceFiles.length > 0 && !hasClientBuild) {
+      push({
+        id: 'CLIENT_NO_BUILD_SCRIPT', severity: 'MEDIUM', category: 'client',
+        title: 'client 有源码但没有可重复的构建脚本',
+        detail: 'package.json 没有 build / prepare 等 client 构建命令；修改 src/client 后无法生成新的 lib/client.js，UI 会一直停留在旧版本。先补构建脚本（如 build:client），再写进 design。',
+        file: 'package.json',
+      })
+    }
     if (clientText.length > 0 && official.client.uiSlots.length === 0) {
       push({
         id: 'CLIENT_NO_UI_SLOT', severity: 'INFO', category: 'client',

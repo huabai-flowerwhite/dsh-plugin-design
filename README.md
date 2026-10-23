@@ -121,12 +121,15 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 使用 dsh plugin design 检查 <插件路径> 的 UI，告诉我为什么没显示、要怎么修。
 ```
 
+完整的排查顺序、构建产物契约与当前可用座位见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
+
 对应工具是 `dshpd_ui_check`，它会同时看**源码/构建产物**和**当前运行中的 client graph**：
 
 | 检查结果 | 含义 | 处理 |
 |---|---|---|
 | `runtime.inGraph = false` | 页面根本没有注册这个 client 半体 | 检查 Loader row 是否为裸包名、`dsh.client`、`exports["./client"]`，然后重启/刷新 |
 | `buildStale = true` | `src/client` 比 `lib/client.js` 新，页面加载的还是旧 UI | 重新构建 client bundle（如 `npm run build:client`）后刷新 |
+| `CLIENT_NO_BUILD_SCRIPT` | 有 client 源码但没有 build/prepare 命令 | 先补可重复的构建脚本，否则改完源码无法生成新 bundle |
 | `CLIENT_ROUTE_MISSING` | client fetch 的本地路由在 Host 源码里找不到，请求落到 SPA 的 HTML | 补 `webServer.register({ path })`，或修正 fetch 路径 |
 | `WEBSERVER_NOT_INJECTED` | 用了 `ctx.webServer` 但没有等待 `webServer` 服务 | 加 `inject` 或用 `ctx.inject(['webServer'], ...)` |
 | `CLIENT_STYLES_SERVICE` | 使用了已移除的 `styles.insert` | 改为插件自己创建 `<style>` 或内联 style |
@@ -174,13 +177,13 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 - 设置页目前是说明 + 扫描/分析（`settings.section`）。如果以后要暴露**可持久化配置**，应迁移到插件配置卡片档位（`plugins.item` + `ctx.configForms` + Host 设置命名空间）。
 - 规则集版本与 Harness 版本解耦：`dshpd_analyze` 输出里会带 `ruleset.version`。
 
-## 1.2.1 更新要点
+## 1.2.2 更新要点
 
+- **UI 恢复能力**：新增 `dshpd_ui_check`，检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_design` 增加 UI 恢复清单，`dshpd_apply` 改 client 源码时提示重新构建。
+- 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
 - 设置页文案重写：先讲“能帮你做什么”，再给 **3 步聊天框用法**；明确 **产出 `design.md` 后可以继续修改 / 规范 / 开发插件**。
 - README 重排为「安装 → 使用 → 原理 → 技术信息」，并补充设置页三个按钮的说明。
-- 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
-- **UI 恢复能力**：新增 `dshpd_ui_check`，检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_design` 增加 UI 恢复清单，`dshpd_apply` 改 client 源码时提示重新构建。
-- 版本号 `1.2.0` → `1.2.1`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
+- 版本号 `1.2.1` → `1.2.2`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
 
 <details>
 <summary>1.2.0 主要更新（规则集 0.2.1、12 工具、持久化等）</summary>
@@ -207,6 +210,7 @@ dsh-plugin-design/
 ├── assets/icon.svg             # 插件管理器图标
 ├── README.md / design.md / CHANGELOG.md / LICENSE
 ├── docs/official-plugin-contract-0.2.md   # 规则集事实依据（含官方链接与规则映射）
+├── docs/client-ui-recovery.md             # UI 消失排查、构建契约、当前座位
 ├── lib/client.js               # 构建产物（factory-form，由 scripts/build-client.mjs 生成）
 ├── scripts/build-client.mjs    # src/client.js → lib/client.js（含 --check）
 ├── src/

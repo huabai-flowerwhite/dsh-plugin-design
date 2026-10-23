@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.2 — 2026-10-23
+
+UI 恢复能力：新增运行时 client graph 检查、构建过期检测、UI 诊断规则与设计模板清单。
+
+### Added (UI restoration)
+
+- `dshpd_ui_check`：查询运行中的 `clientModules.graph()`，返回 `inGraph` / `rev` / `clientPath` / `bundleExists`，并汇总静态 UI 问题。
+- `CLIENT_BUILD_STALE`：`src/client` 比 `lib/client.js` 新（页面加载旧 UI）→ 必须重新构建。
+- `CLIENT_NO_BUILD_SCRIPT`：有 client 源码但没有可重复的 build/prepare 命令。
+- `CLIENT_BUNDLE_NO_APPLY` / `CLIENT_BUNDLE_NO_INJECT`。
+- `CLIENT_NO_UI_SLOT` / `CLIENT_LEGACY_SLOT`（旧版设置卡片 slot 名称）。
+- `CLIENT_REACT_MISSING` / `CLIENT_STYLES_SERVICE`（已移除的 `styles.insert`）。
+- `CLIENT_ROUTE_MISSING`：client `fetch` 的本地路由在 Host 源码中找不到。
+- `WEBSERVER_NOT_INJECTED` / `HOST_FS_HARD_INJECT`。
+- `dshpd_analyze`、`dshpd_verify`、`/analyze` 结果增加运行时 `ui` 状态；`dshpd_design` 增加 UI 恢复清单；`dshpd_apply` 修改 client 源码时返回 `rebuildRequired`。
+- 新增 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)（排查顺序、构建契约、当前座位）。
+
 ## 1.2.1 — 2026-10-23
 
 设置页、文档与规则集的小版本更新；工具签名不变。
@@ -13,17 +30,6 @@
 - `design.md` 增加「使用话术」与「设置页信息架构」；`dsh.plugin.yaml` 描述同步。
 - 根目录与包内的 `deepseek-harness-product-technical-framework.md`、`DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md` 同步到 0.2.1-rc.2；SDK 规范升到 1.2.1（新增 §48）。
 - 版本号 `1.2.0` → `1.2.1`。
-
-### Added (UI restoration)
-
-- `dshpd_ui_check`：查询运行中的 `clientModules.graph()`，返回 `inGraph` / `rev` / `clientPath` / `bundleExists`，并汇总静态 UI 问题。
-- `CLIENT_BUILD_STALE`：`src/client` 比 `lib/client.js` 新（页面加载旧 UI）→ 必须重新构建。
-- `CLIENT_BUNDLE_NO_APPLY` / `CLIENT_BUNDLE_NO_INJECT`。
-- `CLIENT_NO_UI_SLOT` / `CLIENT_LEGACY_SLOT`（旧版设置卡片 slot 名称）。
-- `CLIENT_REACT_MISSING` / `CLIENT_STYLES_SERVICE`（已移除的 `styles.insert`）。
-- `CLIENT_ROUTE_MISSING`：client `fetch` 的本地路由在 Host 源码中找不到。
-- `WEBSERVER_NOT_INJECTED` / `HOST_FS_HARD_INJECT`。
-- `dshpd_analyze`、`dshpd_verify`、`/analyze` 结果增加运行时 `ui` 状态；`dshpd_design` 增加 UI 恢复清单；`dshpd_apply` 修改 client 源码时返回 `rebuildRequired`。
 
 ### Added (rules)
 

@@ -312,7 +312,7 @@ seam 正是“替换一个提供方就能改变整个产品”的原因：FS 与
 
 ## 13. 与 dsh-plugin-design 的关系
 
-`dsh-plugin-design`（当前 1.2.1）是本文与 DH-TP-SDK 的参考实现与自动化工具：
+`dsh-plugin-design`（当前 1.2.2）是本文与 DH-TP-SDK 的参考实现与自动化工具：
 
 - 规则集 `0.2.1` 检查官方 `package.json.dsh`、`engines.dsh`、bundle、client、exports、图标、服务作用域、0.2.0 移除项与源码风险。
 - 两阶段工作流：`discover → inspect → analyze → design` 产出 `design.md`；确认后 `approve → backup → apply/migrate → verify → rollback/report`。

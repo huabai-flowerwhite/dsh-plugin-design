@@ -271,6 +271,7 @@ test('UI diagnostics flag stale bundles, removed styles API, missing routes and 
   for (const expected of [
     'CLIENT_BUILD_STALE', 'CLIENT_STYLES_SERVICE', 'CLIENT_REACT_MISSING',
     'CLIENT_BUNDLE_NO_APPLY', 'CLIENT_ROUTE_MISSING', 'WEBSERVER_NOT_INJECTED',
+    'CLIENT_NO_BUILD_SCRIPT',
   ]) {
     assert.ok(ids.includes(expected), 'missing finding ' + expected + '; got ' + ids.join(','))
   }

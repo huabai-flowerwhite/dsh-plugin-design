@@ -1,6 +1,6 @@
 # dsh plugin design — 设计自述
 
-本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.2.1`，对应顶层设计文档第 53 节的最终交付物。
+本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.2.2`，对应顶层设计文档第 53 节的最终交付物。
 
 ## 定位
 
@@ -59,7 +59,7 @@ dsh-plugin-design/
 - **设置页路由**：`ctx.inject(['webServer'], ...)` 可选注入，避免 apply 早于 webServer 就绪；路由只读，使用 node:fs 适配器，因此可扫描 workspace 之外的插件目录。
 - **生命周期**：工具注册、路由注册、slot 注册都通过 `ctx` / `ctx.effect` 完成，卸载自动清理；`apply` 不保留需要手动释放的资源。
 
-## 设置页信息架构（1.2.1）
+## 设置页信息架构（1.2.1 起）
 
 按「普通用户先看懂，技术细节按需展开」组织：
 
@@ -74,7 +74,7 @@ dsh-plugin-design/
 - 官方契约：`engines.dsh`（含 `workspace:` 拒绝、运行时版本满足性）、`dsh.manifestVersion`、`dsh.bundle.patch`（字符串/数组、越界、缺失、npm files 覆盖）、`dsh.client`（platform / `exports["./client"]` / bundle 存在性 / factory 形态 / 注册 id / `inject`/`external`/`immediately` 类型 / 自引用 / 基线模块）、Host 入口、`exports["./package.json"]`、子路径 `package.json`、图标格式与 256 KiB 上限、`type: module`、npm `files` 完整性。
 - 0.2.0 移除项：`@deepseek-ai/dsh-invariants` / `<pkg>/invariant` 依赖与 import、patch 中的 invariant 行。
 - 源码：globalThis/window/prototype patch、类型断言绕过、模块级 session 状态、危险命令、命令注入、硬编码密钥、eval/new Function、定时器未清理、工具缺 `output`、waterfall 缺 `next()`。
-- UI：`CLIENT_BUILD_STALE`（源码比 bundle 新）、`CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT`、`CLIENT_NO_UI_SLOT`、`CLIENT_REACT_MISSING`、`CLIENT_STYLES_SERVICE`、`CLIENT_ROUTE_MISSING`（client fetch 无 Host 路由）、`WEBSERVER_NOT_INJECTED`、`HOST_FS_HARD_INJECT`；`dshpd_ui_check` 还会查询运行中的 `clientModules.graph()` 判断 `inGraph` / `rev` / `clientPath`。
+- UI：`CLIENT_BUILD_STALE`（源码比 bundle 新）、`CLIENT_NO_BUILD_SCRIPT`（没有可重复构建命令）、`CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT`、`CLIENT_NO_UI_SLOT`、`CLIENT_REACT_MISSING`、`CLIENT_STYLES_SERVICE`、`CLIENT_ROUTE_MISSING`（client fetch 无 Host 路由）、`WEBSERVER_NOT_INJECTED`、`HOST_FS_HARD_INJECT`；`dshpd_ui_check` 还会查询运行中的 `clientModules.graph()` 判断 `inGraph` / `rev` / `clientPath`。详见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
 - 结论：`BLOCKED`（任意 BLOCKER）/ `NEEDS_REVIEW`（任意 CRITICAL）/ `READY_TO_MODIFY`；维度分从 100 扣严重度权重。
 - 迁移项：`manifest-version`、`engines-dsh`、`bundle-patch`、`client-meta`、`remove-invariants-dep`，由 `dshpd_migrate` 执行（只改 package.json）。
 
