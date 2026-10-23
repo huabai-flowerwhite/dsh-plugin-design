@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 — 2026-10-23
+
+面向桌面版：把“挂载到错误 profile”变成可诊断、可修复、可校验的一等能力。
+
+### Added
+
+- `src/profiles.js`：解析 `profiles/<profile>/cordis.patch.yml` 的 insert rows，按 profile 检查包解析（`createRequire` + node_modules 回退），比较 desktop / web。
+- `dshpd_mount`：默认 dryRun 返回要追加的 YAML；`apply:true` 先备份 desktop patch，再追加 `- insert: - id: <包名>`；返回 `restartRequired` 和验证命令。
+- `dshpd_ui_check` 增加 `deployment` / `rootCause` / `fix`：`DESKTOP_PROFILE_NOT_MOUNTED`（web 挂载无效）、`CLIENT_NOT_DISCOVERED_IN_GRAPH`（已挂载需重启/修清单）。
+- `dshpd_analyze`、`dshpd_verify`、`/analyze` 返回 desktop/web 挂载状态；verify 增加 `DESKTOP_PROFILE_MOUNT` / `DESKTOP_PACKAGE_RESOLVABLE`。
+- `dshpd_design` 固定生成「Desktop Profile Deployment」章节 + M-PROFILE-* 项；`design.meta.json` 记录 `deployment.expected`。
+- 设置页插件行显示「桌面 profile 已挂载 / 未挂载」。
+- 测试新增 `tests/profiles.test.mjs`（解析、双 profile 检测、dryRun/apply 备份）与 mount 工具测试；总计 33。
+
 ## 1.2.3 — 2026-10-23
 
 给**没有 UI** 的插件自动生成 UI 方案，并让实现阶段真正落地。

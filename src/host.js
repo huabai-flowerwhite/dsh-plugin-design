@@ -1,6 +1,6 @@
 // dsh-plugin-design — Host half (persistent plugin)
 //
-// Registers 12 model-facing tools implementing the two-phase workflow:
+// Registers 14 model-facing tools implementing the two-phase workflow:
 //   discover -> inspect -> analyze -> design -> approve -> backup -> apply
 //   -> verify -> rollback -> status -> report, plus gated manifest migrations.
 //
@@ -20,6 +20,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename as pathBasename, join as pathJoin, normalize as pathNormalize, relative as pathRelative, resolve as pathResolve } from 'node:path'
 
 import { analyzeModel, countBySeverity, isSourcePath, parseManifestHeuristic, RULESET } from './rules.js'
+import { ensureDesktopMount, inspectDeployment } from './profiles.js'
 
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'coverage', 'out',
@@ -35,7 +36,7 @@ const MAX_BODY_BYTES = 1024 * 1024
 const MAX_SCAN_RESULTS = 500
 
 const TOOL_NAMES = [
-  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design',
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design', 'dshpd_mount',
   'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
   'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
 ]
@@ -683,8 +684,7 @@ export default {
     // ---- runtime client-module status -----------------------------------
     // Answers the question static analysis cannot: is this package's browser
     // half actually in the running client graph, and will the page load it?
-    function uiStatus(packageName) {
-      if (typeof packageName !== 'string' || packageName.trim() === '') {
+    function uiStatus(packageName) {      if (typeof packageName !== 'string' || packageName.trim() === '') {
         return { available: false, reason: 'package name unknown' }
       }
       const clientModules = typeof ctx.get === 'function' ? ctx.get('clientModules') : undefined
@@ -712,7 +712,9 @@ export default {
       } catch (error) {
         clientPath = null
       }
+      if (typeof clientPath !== 'string') clientPath = null
       if (clientPath === null && record && record.meta) clientPath = record.meta.clientPath || null
+      if (typeof clientPath !== 'string') clientPath = null
       let bundleExists = false
       if (typeof clientPath === 'string') {
         try { bundleExists = statSync(clientPath).isFile() } catch (error) { bundleExists = false }
@@ -728,6 +730,14 @@ export default {
         external: record && record.meta && Array.isArray(record.meta.external) ? record.meta.external : [],
         immediately: record && record.meta ? record.meta.immediately === true : false,
         graphRev: graph && typeof graph.rev === 'string' ? graph.rev : null,
+      }
+    }
+
+    function deploymentFor(packageName) {
+      try {
+        return inspectDeployment(packageName)
+      } catch (error) {
+        return { packageName, error: messageOf(error) }
       }
     }
 
@@ -803,6 +813,7 @@ export default {
           pluginPath: model.pluginPath,
           pluginName: isPlainObject(model.pkg) ? model.pkg.name || null : null,
           ui: isPlainObject(model.pkg) && typeof model.pkg.name === 'string' ? uiStatus(model.pkg.name) : null,
+          deployment: isPlainObject(model.pkg) && typeof model.pkg.name === 'string' ? deploymentFor(model.pkg.name) : null,
           ruleset: RULESET,
           runtimeVersion: harnessVersion,
           official: result.official,
@@ -848,12 +859,30 @@ export default {
         }
         if (packageName === null) return { error: 'packageName unknown: pass pluginPath or packageName' }
         const runtime = uiStatus(packageName)
+        const deployment = deploymentFor(packageName)
+        const rootCause = runtime.inGraph
+          ? null
+          : (deployment.desktop && deployment.desktop.mounted === false
+            ? 'DESKTOP_PROFILE_NOT_MOUNTED'
+            : 'CLIENT_NOT_DISCOVERED_IN_GRAPH')
+        const fix = rootCause === 'DESKTOP_PROFILE_NOT_MOUNTED'
+          ? [
+              '桌面版读取的是 ' + String(deployment.desktop.patchPath) + '，该文件里没有 ' + packageName + ' 的 insert row。',
+              '用 dshpd_mount({ packageName: "' + packageName + '", apply: true }) 追加行，然后重启桌面版。',
+              'web profile 的挂载对桌面版无效；dsh-client-modules 只扫描当前 Loader 中已挂载的 entries。',
+            ]
+          : (rootCause === 'CLIENT_NOT_DISCOVERED_IN_GRAPH'
+            ? ['desktop profile 已挂载但仍不在 client graph：重启桌面版（client-modules 的“非 client 包”判定会缓存到重启），再检查 dsh.client / exports["./client"] / lib/client.js。']
+            : [])
         const uiIssues = result === null
           ? []
           : result.issues.filter((issue) => issue.category === 'client' || issue.id === 'WEBSERVER_NOT_INJECTED' || issue.id === 'HOST_FS_HARD_INJECT').slice(0, 50)
         return {
           packageName,
           runtime,
+          deployment,
+          rootCause,
+          fix,
           clientDeclared: result === null ? null : result.official.client.declared,
           buildStale: result === null ? null : result.official.client.buildStale,
           applyPresent: result === null ? null : result.official.client.applyPresent,
@@ -861,13 +890,47 @@ export default {
           uiSlots: result === null ? [] : result.official.client.uiSlots,
           issues: uiIssues,
           howToUse: [
-            'runtime.inGraph=false：检查 row 是否为裸包名、package.json.dsh.client、exports["./client"]、lib/client.js 是否存在，然后重启/刷新页面。',
+            'runtime.inGraph=false：先看 rootCause。DESKTOP_PROFILE_NOT_MOUNTED 表示桌面版 patch 没挂载（web 挂载无效）；CLIENT_NOT_DISCOVERED_IN_GRAPH 表示已挂载但需重启/修清单。',
             'buildStale=true：先重新构建 client bundle（如 npm run build:client），再刷新页面；否则页面加载的仍是旧 UI。',
             'issues 里的 CLIENT_ROUTE_MISSING / WEBSERVER_NOT_INJECTED 会让设置页 fetch 落到 SPA fallback，表现为 JSON 解析错误或页面空白。',
           ],
         }
       },
       { concurrencySafe: true })
+
+    reg('dshpd_mount',
+      'Inspect or add a desktop-profile mount row for a plugin. The desktop app loads profiles/desktop only; a plugin mounted only in profiles/web is invisible to the desktop client graph. Defaults to dryRun (returns the exact YAML row); pass apply:true to back up and append the row to profiles/desktop/cordis.patch.yml, then restart the desktop app.',
+      {
+        packageName: { type: 'string', description: 'Package name to mount; optional when pluginPath is given.' },
+        pluginPath: { type: 'string', description: 'Plugin project directory (used to read package.json for the name).' },
+        apply: { type: 'boolean', description: 'false (default): dryRun and return the append block; true: back up and append to the desktop patch.' },
+        label: { type: 'string', description: 'Optional display name for the inserted row (defaults to packageName).' },
+      },
+      [],
+      async (args, exec) => {
+        let packageName = nonEmptyString(args.packageName)
+        if (packageName === null && nonEmptyString(args.pluginPath) !== null) {
+          const raw = await tryReadText(pathJoin(args.pluginPath, 'package.json'), exec)
+          const parsed = safeParseJson(raw)
+          if (isPlainObject(parsed)) packageName = nonEmptyString(parsed.name)
+        }
+        if (packageName === null) return { error: 'packageName unknown: pass packageName or pluginPath' }
+        const result = ensureDesktopMount(packageName, {
+          apply: args.apply === true,
+          label: nonEmptyString(args.label) || packageName,
+        })
+        return {
+          packageName,
+          ...result,
+          deployment: result.deployment || deploymentFor(packageName),
+          note: result.applied
+            ? 'Row appended. Restart the desktop app, then run dshpd_ui_check and require runtime.inGraph=true.'
+            : (result.alreadyMounted
+              ? 'Already mounted in profiles/desktop. If the UI still does not appear, restart the desktop app.'
+              : 'Dry run only. Re-call with apply:true to append the row (the patch is backed up next to the file).'),
+        }
+      },
+      { concurrencySafe: false })
 
     reg('dshpd_design',
       'Generate a design.md draft for adapting or developing a plugin: official-contract summary, findings by severity, actionable migration IDs, a two-phase modification plan, and a UI proposal. When the target has no client half, the design adds a concrete UI suggestion (entry, text wireframe, data plan, implementation checklist) and returns it so the model can describe the proposed UI to the user before implementation. Writes to <pluginPath>/.dsh-plugin-design/design.md (and a design.meta.json sidecar) and never overwrites unless mode=overwrite (mode=version writes design.vN.md). This tool never edits plugin sources.',
@@ -903,7 +966,10 @@ export default {
         const uiProposal = uiMode === 'off'
           ? { disabled: true, proposed: false, reason: 'ui=off', summary: '按调用方要求不生成 UI 方案。' }
           : buildUiProposal(model, result)
-        const template = buildDesignTemplate(args.pluginPath, result, { uiProposal })
+        const deployment = isPlainObject(model.pkg) && typeof model.pkg.name === 'string'
+          ? deploymentFor(model.pkg.name)
+          : null
+        const template = buildDesignTemplate(args.pluginPath, result, { uiProposal, deployment })
         const designPath = pathJoin(directory, designName)
         await writeText(designPath, template, exec)
         const designMetaPath = pathJoin(directory, 'design.meta.json')
@@ -912,6 +978,13 @@ export default {
           pluginPath: args.pluginPath,
           designPath,
           createdAt: new Date().toISOString(),
+          deployment: {
+            target: 'desktop',
+            expected: true,
+            desktopMounted: deployment !== null && deployment.desktop && deployment.desktop.mounted === true,
+            webMounted: deployment !== null && deployment.web && deployment.web.mounted === true,
+            patchPath: deployment !== null && deployment.desktop ? deployment.desktop.patchPath : null,
+          },
           ui: {
             expected: uiProposal.disabled === true ? false : Boolean(uiProposal.proposed || result.official.client.declared),
             proposed: uiProposal.proposed === true,
@@ -927,6 +1000,7 @@ export default {
           designMetaPath,
           mode,
           ui: uiProposal,
+          deployment,
           issueCount: result.issues.length,
           overall: result.overall,
           migrations: result.migrations.map((migration) => migration.id),
@@ -1126,12 +1200,12 @@ export default {
           applied: true,
           filePath: args.filePath,
           matches: occurrences,
-          before: outcome && outcome.before !== undefined ? shortText(outcome.before, 4000) : undefined,
-          after: outcome && outcome.after !== undefined ? shortText(outcome.after, 4000) : undefined,
+          before: outcome && outcome.before !== undefined ? shortText(outcome.before, 4000) : null,
+          after: outcome && outcome.after !== undefined ? shortText(outcome.after, 4000) : null,
           rebuildRequired: clientSourceEdited,
           note: clientSourceEdited
             ? '改的是 client 源码：必须重新构建 client bundle（如 npm run build:client），否则页面加载的仍是旧 UI；构建后再运行 dshpd_ui_check / dshpd_verify。'
-            : undefined,
+            : null,
           journalCount: task.journal.length,
         }
       })
@@ -1213,7 +1287,7 @@ export default {
       })
 
     reg('dshpd_verify',
-      'Verify a modification run: backup manifest integrity, package.json parsing, modified files (no conflict markers), client bundle factory shape, client build freshness / apply-inject exports / known UI slots / runtime client-graph registration, and whether analysis findings worsened versus the pre-modification snapshot. Read-only checks; appends a verify entry to the durable journal.',
+      'Verify a modification run: backup manifest integrity, package.json parsing, modified files (no conflict markers), client bundle factory shape, client build freshness / apply-inject exports / known UI slots / runtime client-graph registration, desktop profile mount/package resolution, and whether analysis findings worsened versus the pre-modification snapshot. Read-only checks; appends a verify entry to the durable journal.',
       {
         pluginPath: { type: 'string', description: 'Absolute path to the plugin project directory.' },
         backupId: { type: 'string', description: 'Optional backupId; defaults to the latest backup on disk.' },
@@ -1276,6 +1350,28 @@ export default {
         const ui = isPlainObject(scanned.model.pkg) && typeof scanned.model.pkg.name === 'string'
           ? uiStatus(scanned.model.pkg.name)
           : null
+        const deployment = isPlainObject(scanned.model.pkg) && typeof scanned.model.pkg.name === 'string'
+          ? deploymentFor(scanned.model.pkg.name)
+          : null
+        if (deployment !== null && deployment.desktop) {
+          const expectDesktop = designMeta && isPlainObject(designMeta.deployment)
+            ? designMeta.deployment.expected === true
+            : false
+          checks.push({
+            id: 'DESKTOP_PROFILE_MOUNT',
+            status: deployment.desktop.mounted ? 'PASS' : (expectDesktop ? 'FAIL' : 'WARN'),
+            detail: deployment.desktop.mounted
+              ? 'mounted in ' + deployment.desktop.patchPath
+              : 'desktop patch has no row: ' + deployment.desktop.patchPath + '（web 挂载对桌面版无效）',
+          })
+          checks.push({
+            id: 'DESKTOP_PACKAGE_RESOLVABLE',
+            status: deployment.desktop.packageResolvable ? 'PASS' : (expectDesktop ? 'FAIL' : 'WARN'),
+            detail: deployment.desktop.packageResolvable
+              ? 'resolved: ' + String(deployment.desktop.packagePath)
+              : 'desktop profile cannot resolve the package; link/install it before mounting',
+          })
+        }
         if (official.client.declared) {
           checks.push({
             id: 'CLIENT_BUNDLE',
@@ -1350,7 +1446,7 @@ export default {
         } catch (error) {
           journalWarning = messageOf(error)
         }
-        return { ok, pluginPath: base, backupId, checks, analysis: summary, official: scanned.result.official, ui, designMeta, journalWarning }
+        return { ok, pluginPath: base, backupId, checks, analysis: summary, official: scanned.result.official, ui, deployment, designMeta, journalWarning }
       },
       { concurrencySafe: false })
 
@@ -1544,6 +1640,7 @@ export default {
               ok: true,
               pluginPath: model.pluginPath,
               ui: isPlainObject(model.pkg) && typeof model.pkg.name === 'string' ? uiStatus(model.pkg.name) : null,
+              deployment: isPlainObject(model.pkg) && typeof model.pkg.name === 'string' ? deploymentFor(model.pkg.name) : null,
               ruleset: RULESET,
               official: result.official,
               issueCount: result.issues.length,
@@ -1682,6 +1779,15 @@ function buildDesignTemplate(pluginPath, result, options) {
   lines.push('## 5. Modification Plan')
   lines.push('')
   lines.push('（逐项 M001/M002/...：ID、Reason、File、Before、After、Risk、Validation、Rollback；只改目标插件源码，不修改 Core。）')
+  if (options && options.deployment && options.deployment.desktop && options.deployment.desktop.mounted !== true) {
+    lines.push('')
+    lines.push('Desktop 挂载项（桌面版必做）：')
+    lines.push('- M-PROFILE-1：在 `' + String(options.deployment.desktop.patchPath) + '` 末尾追加 `' + String(options.deployment.packageName) + '` 的 insert row（用 `dshpd_mount` 或手工，先备份 patch）')
+    lines.push('- M-PROFILE-2：重启桌面版，`dshpd_ui_check` 确认 `runtime.inGraph=true`')
+    if (options.deployment.desktop.packageResolvable !== true) {
+      lines.push('- M-PROFILE-3：desktop profile 解析不到该包；先 link/install 到 `' + String(options.deployment.dshHome) + '\\profiles\\node_modules`，再挂载')
+    }
+  }
   if (options && options.uiProposal && options.uiProposal.proposed) {
     lines.push('')
     lines.push('UI 实施项（用户确认 UI 方案后执行）：')
@@ -1699,6 +1805,30 @@ function buildDesignTemplate(pluginPath, result, options) {
   lines.push('')
   let sectionNumber = 6
   const uiProposal = options && options.uiProposal ? options.uiProposal : null
+  if (options && options.deployment) {
+    const deployment = options.deployment
+    const desktop = deployment.desktop || {}
+    lines.push('## ' + sectionNumber + '. Desktop Profile Deployment（桌面版必做）')
+    sectionNumber += 1
+    lines.push('')
+    lines.push('- 目标：桌面版读取 `' + String(desktop.profilePath || '') + '`；web profile 的挂载对桌面版无效。')
+    lines.push('- desktop patch：`' + String(desktop.patchPath || '') + '`（mounted=' + String(desktop.mounted === true) + '）')
+    lines.push('- web patch：`' + String(deployment.web && deployment.web.patchPath || '') + '`（mounted=' + String(deployment.web && deployment.web.mounted === true) + '）')
+    lines.push('- desktop 包解析：' + (desktop.packageResolvable === true ? '✅ `' + String(desktop.packagePath || '') + '`' : '❌ 解析不到；先 link/install 到 profiles/node_modules'))
+    if (desktop.mounted !== true) {
+      lines.push('- 当前未挂载到 desktop。追加行（先备份 patch）：')
+      lines.push('')
+      lines.push('```yaml')
+      for (const line of String(deployment.mountRow || '').split('\n')) lines.push(line)
+      lines.push('```')
+      lines.push('')
+      lines.push('- 也可以调用 `dshpd_mount({ packageName: "' + String(deployment.packageName) + '", apply: true })`，它会自动备份 patch 并追加行。')
+      lines.push('- 追加后**必须重启桌面版**；`dsh-client-modules` 只扫描当前 Loader 中已挂载的 entries，且“非 client 包”的判定会缓存到重启。')
+    } else {
+      lines.push('- 已在 desktop 挂载。若 `runtime.inGraph=false`：重启桌面版后重试；仍失败再查 `dsh.client` / `exports["./client"]` / `lib/client.js`。')
+    }
+    lines.push('')
+  }
   if (uiProposal && uiProposal.proposed) {
     lines.push('## ' + sectionNumber + '. UI 方案建议（待用户确认）')
     sectionNumber += 1

@@ -159,6 +159,14 @@ dsh plugin --profile web add ./my-plugin
 
 修复顺序：改源码 → 重新构建 → 刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → `dshpd_verify`。
 
+## 9.2 桌面版 profile（0.2.x 实际部署）
+
+- 桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`；`profiles/web` 的挂载对桌面版无效。
+- `dsh-client-modules` 只扫描当前 host Loader 中已挂载的 entries；包没挂载时 `clientPath=null`，client 半体不会进入 `window.__DSH_BOOT__` graph。
+- `dshpd_analyze` / `dshpd_ui_check` / `dshpd_verify` 返回 `deployment.desktop` / `deployment.web`：`mounted`、`packageResolvable`、`patchPath`。
+- `dshpd_mount` 默认 dryRun；`apply:true` 先备份 patch，再追加 `- insert: - id: <包名>`。追加后必须重启桌面版（client-modules 的“非 client 包”判定会缓存到重启）。
+- `design.md` 固定包含「Desktop Profile Deployment」；`design.meta.json` 的 `deployment.expected=true` 会让 `dshpd_verify` 在未挂载时 FAIL。
+
 ## 10. 规则集映射
 
 | Rule ID | 严重度 | 维度 | 修复 |

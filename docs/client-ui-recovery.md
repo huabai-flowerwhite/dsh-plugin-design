@@ -30,8 +30,20 @@
 | `buildStale` | `src/client` 是否比 `lib/client.js` 新 |
 | `applyPresent` / `injectPresent` | bundle 是否导出 `apply` / `inject` |
 | `uiSlots` | 检测到的 UI 座位 |
+| `deployment.desktop.mounted` | desktop profile 的 patch 是否有该包 |
+| `deployment.desktop.packageResolvable` | 从 desktop profile 能否解析到该包 |
+| `rootCause` | `DESKTOP_PROFILE_NOT_MOUNTED` / `CLIENT_NOT_DISCOVERED_IN_GRAPH` |
 
-`inGraph=false` 优先查：row 是否裸包名、`package.json.dsh.client`、`exports["./client"]`、`lib/client.js` 是否存在，然后重启 dsh / 刷新页面。
+### 桌面版先看 profile
+
+桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`。如果插件只挂在 `profiles/web`：
+
+- `runtime.inGraph=false`，`deployment.desktop.mounted=false`，`rootCause=DESKTOP_PROFILE_NOT_MOUNTED`；
+- 这不是代码/清单问题，改代码不会让 UI 出现；
+- 用 `dshpd_mount({ packageName, apply: true })` 追加行（会先备份 patch），然后**重启桌面版**；
+- `web` 挂载对桌面版无效；client-modules 只扫描当前 Loader 中已挂载的 entries。
+
+`inGraph=false` 其余情况再查：row 是否裸包名、`package.json.dsh.client`、`exports["./client"]`、`lib/client.js` 是否存在，然后重启 dsh / 刷新页面。
 
 ## 2. 常见原因与修复
 
@@ -43,7 +55,7 @@
 | apply 时白屏/报错 | `CLIENT_REACT_MISSING` / `CLIENT_STYLES_SERVICE` | `require('react')`；去掉已移除的 `styles.insert` |
 | 设置页 fetch 报 `Unexpected token "<"` | `CLIENT_ROUTE_MISSING` / `WEBSERVER_NOT_INJECTED` | 补 `webServer.register({ path })`，或 `ctx.inject(['webServer'], ...)` |
 | 模块注册了但页面没有 | `CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT` | 修构建出口 |
-| 设置页整个消失 | `runtime.inGraph=false` | 检查 row / `dsh.client` / `exports` / 重启刷新 |
+| 设置页整个消失 | `runtime.inGraph=false` | 先看 `rootCause` / `deployment.desktop.mounted`，再查 row / `dsh.client` / `exports` / 重启 |
 
 ## 3. 构建产物契约
 

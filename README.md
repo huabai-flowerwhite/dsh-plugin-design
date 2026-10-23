@@ -53,9 +53,21 @@ bash install.sh
 
 > **桌面端**使用 `desktop` profile（由 Electron 托管，`dsh plugin --profile desktop` 会被拒绝）。要在桌面端使用，安装时加 `-Profile desktop`（Windows）或 `--profile desktop`（Linux/macOS），走 link 模式。
 
-安装完重启 dsh（或让 HMR 重载）并刷新页面，就能在聊天框看到 13 个 `dshpd_*` 工具，并在「设置 → dsh plugin design」看到设置页。
+安装完重启 dsh（或让 HMR 重载）并刷新页面，就能在聊天框看到 14 个 `dshpd_*` 工具，并在「设置 → dsh plugin design」看到设置页。
 
 > 运行中新增挂载时，Host 半体可能立即生效；Client 半体需要刷新页面（Ctrl+R / Cmd+R）或重启应用，设置页才会出现在导航里。
+
+## 桌面版优先（desktop profile）
+
+当前桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`；挂在 `web` profile 的插件对桌面版**不可见**，`dsh-client-modules` 也不会把它的 client 半体放进桌面版的 graph。
+
+- `dshpd_analyze` / `dshpd_design` / `dshpd_ui_check` 都会返回 `deployment.desktop` / `deployment.web` 的挂载与包解析状态。
+- `design.md` 固定包含「Desktop Profile Deployment」；未挂载时给 M-PROFILE-* 项和可直接追加的 YAML。
+- `dshpd_mount({ packageName, apply: true })` 会先备份 desktop patch，再追加 `- insert: - id: <包名>`；默认不写，只返回要追加的内容。
+- 追加后必须**重启桌面版**；仅刷新页面不够，因为 client-modules 的“非 client 包”判定会缓存到重启。
+- 如果 `deployment.desktop.packageResolvable=false`，先把包 link/install 到 `$DSH_HOME/profiles/node_modules`，再挂载。
+
+> 网页版和桌面版插件都按同一套契约处理；最终交付默认以 desktop profile 可加载为准。
 
 ## 怎么用（聊天框，3 步）
 
@@ -162,15 +174,16 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 安全边界：分析先于修改、设计先于执行；未确认不修改；修改前备份、失败可回滚、改后可校验；不修改 Core、不使用 private API。
 
-## 工具清单（13 个）
+## 工具清单（14 个）
 
 | 阶段 | 工具 | 作用 |
 |---|---|---|
 | 分析 | `dshpd_discover` | 递归发现插件项目，报告 bundle / client / engines.dsh 角色 |
 | 分析 | `dshpd_inspect` | 读取单个插件的清单、patch、client、目录与源码清单（只读） |
-| 分析 | `dshpd_analyze` | 规则集 `0.2.1` 启发式扫描，输出问题、官方契约快照、可执行迁移、评分与结论 |
-| 分析 | `dshpd_ui_check` | 检查 UI 是否真的注册进运行中的 client graph，并报告构建过期、apply/inject、UI 座位与缺失路由 |
-| 分析 | `dshpd_design` | 生成 `design.md`（含契约快照、问题、迁移项、修改计划；无 UI 时附 UI 方案，有 UI 时附恢复清单） |
+| 分析 | `dshpd_analyze` | 规则集 `0.2.1` 启发式扫描，输出问题、官方契约快照、可执行迁移、评分、结论与 desktop/web profile 挂载状态 |
+| 分析 | `dshpd_ui_check` | 检查 UI 是否真的注册进运行中的 client graph，给出 `rootCause`（桌面 profile 未挂载 / 已挂载未发现），并报告构建过期、apply/inject、UI 座位与缺失路由 |
+| 分析 | `dshpd_design` | 生成 `design.md`（含契约快照、问题、迁移项、修改计划、Desktop Deployment；无 UI 时附 UI 方案，有 UI 时附恢复清单） |
+| 部署 | `dshpd_mount` | 检查 desktop/web profile 挂载；`apply:true` 时备份并追加 desktop patch 行（桌面版必做） |
 | 执行 | `dshpd_approve` | 你确认后开启审批门，签发 approvalToken |
 | 执行 | `dshpd_backup` | 快照待改文件（含 hash 与分析摘要，持久化） |
 | 执行 | `dshpd_apply` | 单文件字面量替换；三重校验 + 写前 hash 校验 + `dryRun` |
@@ -187,14 +200,17 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 - 设置页目前是说明 + 扫描/分析（`settings.section`）。如果以后要暴露**可持久化配置**，应迁移到插件配置卡片档位（`plugins.item` + `ctx.configForms` + Host 设置命名空间）。
 - 规则集版本与 Harness 版本解耦：`dshpd_analyze` 输出里会带 `ruleset.version`。
 
-## 1.2.3 更新要点
+## 1.3.0 更新要点
 
-- **无 UI 插件的 UI 提案**：`dshpd_design` 默认 `ui: "auto"`，目标插件没有 `dsh.client` 时自动在 `design.md` 增加 UI 方案建议（入口、文字线框、页面区块、数据/路由、实现清单），并返回 `ui.wireframe` 供 Agent 先向用户描述大致样貌；`design.meta.json` 记录 `ui.expected`，`dshpd_verify` 用 `UI_EXPECTED` 检查是否真的实现。
-- **UI 恢复能力**：`dshpd_ui_check` 检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_design` 增加 UI 恢复清单，`dshpd_apply` 改 client 源码时提示重新构建。
+- **桌面版优先**：分析/设计/校验都检查 `profiles/desktop` 与 `profiles/web`。桌面版只读 desktop profile；web 挂载对桌面版无效。`design.md` 固定增加「Desktop Profile Deployment」，未挂载时给 M-PROFILE-* 项和可追加的 YAML。
+- **`dshpd_mount`**：默认 dryRun 返回挂载行；`apply:true` 先备份 `cordis.patch.yml` 再追加 `- insert: - id: <包名>`，提示重启桌面版并用 `dshpd_ui_check` 确认 `inGraph=true`。
+- **`dshpd_ui_check` 根因**：`rootCause=DESKTOP_PROFILE_NOT_MOUNTED` 表示 desktop patch 没挂载（web 挂载无效）；`CLIENT_NOT_DISCOVERED_IN_GRAPH` 表示已挂载但需重启/修清单。
+- **无 UI 插件的 UI 提案**：`dshpd_design` 默认 `ui: "auto"`，目标插件没有 `dsh.client` 时自动在 `design.md` 增加 UI 方案建议（入口、文字线框、页面区块、数据/路由、实现清单），并返回 `ui.userMessage` / `ui.wireframe` 供 Agent 先向用户描述大致样貌；`design.meta.json` 记录 `ui.expected`，`dshpd_verify` 用 `UI_EXPECTED` 检查是否真的实现。
+- **UI 恢复能力**：`dshpd_ui_check` 检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_apply` 改 client 源码时提示重新构建。
 - 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
 - 设置页文案重写：先讲“能帮你做什么”，再给 **3 步聊天框用法**；明确 **产出 `design.md` 后可以继续修改 / 规范 / 开发插件**。
 - README 重排为「安装 → 使用 → 原理 → 技术信息」，并补充设置页三个按钮的说明。
-- 版本号 `1.2.2` → `1.2.3`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
+- 版本号 `1.2.3` → `1.3.0`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
 
 <details>
 <summary>1.2.0 主要更新（规则集 0.2.1、12 工具、持久化等）</summary>
@@ -226,10 +242,10 @@ dsh-plugin-design/
 ├── scripts/build-client.mjs    # src/client.js → lib/client.js（含 --check）
 ├── src/
 │   ├── index.js                # Host 入口 → host.js
-│   ├── host.js                 # 13 个工具、持久化备份/journal、设置页只读路由
+│   ├── host.js                 # 14 个工具、持久化备份/journal、设置页只读路由
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 28 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
+└── tests/                      # 33 个规则/宿主/客户端/bundle/部署测试 + 3 个插件样本
 ```
 
 ## 测试
@@ -240,7 +256,7 @@ npm run build:client    # 重新生成 lib/client.js
 npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 ```
 
-覆盖：包清单/图标/导出、DH-TP-SDK 清单、bundle patch、源码安全、SemVer、三类插件样本、13 工具与 3 条路由、审批→备份→修改→校验→报告→回滚全流程、清单迁移、client 构建防漂移。详见 `tests/README.md`。
+覆盖：包清单/图标/导出、DH-TP-SDK 清单、bundle patch、源码安全、SemVer、三类插件样本、14 工具与 3 条路由、desktop/web profile 挂载、审批→备份→修改→校验→报告→回滚全流程、清单迁移、client 构建防漂移。详见 `tests/README.md`。
 
 ## 已知限制
 

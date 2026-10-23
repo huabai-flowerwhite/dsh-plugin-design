@@ -6,7 +6,7 @@
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync,
+  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync,
   statSync, writeFileSync,
 } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -165,12 +165,12 @@ function makeRouteResponse() {
   }
 }
 
-test('registers exactly 13 tools and 3 settings routes', () => {
+test('registers exactly 14 tools and 3 settings routes', () => {
   const harness = createHarness()
-  assert.equal(harness.tools.size, 13)
+  assert.equal(harness.tools.size, 14)
   assert.deepEqual([...harness.tools.keys()].sort(), [
     'dshpd_analyze', 'dshpd_apply', 'dshpd_approve', 'dshpd_backup',
-    'dshpd_design', 'dshpd_discover', 'dshpd_inspect', 'dshpd_migrate',
+    'dshpd_design', 'dshpd_discover', 'dshpd_inspect', 'dshpd_migrate', 'dshpd_mount',
     'dshpd_report', 'dshpd_rollback', 'dshpd_status', 'dshpd_ui_check', 'dshpd_verify',
   ])
   assert.deepEqual(harness.routes.map((route) => route.path).sort(), [
@@ -374,6 +374,7 @@ test('design proposes a UI for a plugin without a client half and verify expects
   assert.match(design.ui.userMessage, /```text/)
   const markdown = readFileSync(design.designPath, 'utf8')
   assert.match(markdown, /UI 方案建议/)
+  assert.match(markdown, /Desktop Profile Deployment/)
   assert.match(markdown, /settings\.section/)
   const meta = JSON.parse(readFileSync(design.designMetaPath, 'utf8'))
   assert.equal(meta.ui.expected, true)
@@ -386,6 +387,29 @@ test('design proposes a UI for a plugin without a client half and verify expects
   assert.ok(verify.checks.some((check) => check.id === 'UI_EXPECTED' && check.status === 'FAIL'))
 })
 
+test('mount tool dry-runs then appends a desktop profile row with backup', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'dshpd-home-'))
+  temporaryRoots.push(home)
+  mkdirSync(join(home, 'profiles', 'desktop', 'node_modules', 'demo-plugin'), { recursive: true })
+  writeFileSync(join(home, 'profiles', 'desktop', 'node_modules', 'demo-plugin', 'package.json'), '{"name":"demo-plugin","version":"1.0.0"}', 'utf8')
+  writeFileSync(join(home, 'profiles', 'desktop', 'cordis.patch.yml'), '- insert:\n    - id: ui-settings\n', 'utf8')
+  const previous = process.env.DSH_HOME
+  process.env.DSH_HOME = home
+  try {
+    const harness = createHarness()
+    const dry = await call(harness, 'dshpd_mount', { packageName: 'demo-plugin' })
+    assert.equal(dry.applied, false)
+    assert.match(dry.append, /- id: demo-plugin/)
+    const applied = await call(harness, 'dshpd_mount', { packageName: 'demo-plugin', apply: true })
+    assert.equal(applied.applied, true)
+    assert.equal(existsSync(applied.backupPath), true)
+    assert.match(readFileSync(join(home, 'profiles', 'desktop', 'cordis.patch.yml'), 'utf8'), /- id: demo-plugin/)
+  } finally {
+    if (previous === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previous
+  }
+})
+
 test('settings routes answer info/analyze/discover over the wire contract', async () => {
   const harness = createHarness()
   const byPath = new Map(harness.routes.map((route) => [route.path, route]))
@@ -394,8 +418,8 @@ test('settings routes answer info/analyze/discover over the wire contract', asyn
   await byPath.get('/dsh-plugin-design/info').handler(makeRouteRequest('GET', '/dsh-plugin-design/info'), info)
   assert.equal(info.statusCode, 200)
   const infoJson = JSON.parse(info.body)
-  assert.equal(infoJson.version, '1.2.3')
-  assert.equal(infoJson.tools.length, 13)
+  assert.equal(infoJson.version, '1.3.0')
+  assert.equal(infoJson.tools.length, 14)
 
   const analyze = makeRouteResponse()
   await byPath.get('/dsh-plugin-design/analyze').handler(

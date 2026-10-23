@@ -17,7 +17,7 @@ const VERSION = '__DSHPD_VERSION__'
 const HARNESS_RANGE = '__DSHPD_HARNESS__'
 const RULESET = '0.2.1'
 const TOOL_NAMES = [
-  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design',
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design', 'dshpd_mount',
   'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
   'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
 ]
@@ -238,6 +238,17 @@ function PluginRow(props) {
                   : null,
               ])
             : null,
+          analysis.deployment && analysis.deployment.desktop
+            ? h('div', { style: { fontSize: 11, marginTop: 2 } }, [
+                h('span', { style: badgeStyle(analysis.deployment.desktop.mounted ? 'ok' : 'warn') }, '桌面 profile'),
+                h('span', { style: { opacity: 0.8 } }, analysis.deployment.desktop.mounted
+                  ? '已挂载'
+                  : '未挂载（web 挂载对桌面版无效）'),
+                analysis.deployment.desktop.packageResolvable === false
+                  ? h('span', { style: { marginLeft: 6, color: COLORS.warn } }, '· desktop 解析不到该包')
+                  : null,
+              ])
+            : null,
           h(FindingList, { issues: analysis.issues, truncated: analysis.issuesTruncated === true }),
         ])
       : null,
@@ -412,6 +423,7 @@ function Panel(props) {
       h('div', { style: { fontSize: 12, opacity: 0.8 } }, '规则集 ' + RULESET + ' · 兼容 Harness ' + HARNESS_RANGE),
       h('div', { style: { fontSize: 12, lineHeight: 1.9, marginTop: 6 } }, [
         h('div', { key: 'a' }, [h('b', null, '分析：'), 'dshpd_discover · dshpd_inspect · dshpd_analyze · dshpd_ui_check · dshpd_design']),
+        h('div', { key: 'm' }, [h('b', null, '部署：'), 'dshpd_mount（桌面 profile 挂载/诊断）']),
         h('div', { key: 'e' }, [h('b', null, '执行：'), 'dshpd_approve · dshpd_backup · dshpd_apply · dshpd_migrate · dshpd_verify']),
         h('div', { key: 'r' }, [h('b', null, '恢复与报告：'), 'dshpd_rollback · dshpd_status · dshpd_report']),
       ]),

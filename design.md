@@ -1,6 +1,6 @@
 # dsh plugin design — 设计自述
 
-本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.2.3`，对应顶层设计文档第 53 节的最终交付物。
+本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.3.0`，对应顶层设计文档第 53 节的最终交付物。
 
 ## 定位
 
@@ -44,7 +44,7 @@ dsh-plugin-design/
 ├── scripts/build-client.mjs   # src/client.js → lib/client.js，支持 --check
 └── src/
     ├── index.js               # Host 入口 → host.js
-    ├── host.js                # 13 个工具 + 持久化状态 + 设置页只读路由
+    ├── host.js                # 14 个工具 + 持久化状态 + 设置页只读路由
     ├── rules.js               # 纯规则引擎（无 I/O）
     └── client.js              # Client 半体源码
 ```
@@ -64,8 +64,19 @@ dsh-plugin-design/
 按「普通用户先看懂，技术细节按需展开」组织：
 
 1. **主视图**：一句话定位 → 能帮你做什么（检查 / 出方案 / 动手）→ 聊天框 3 步（明确 `design.md` 后可以继续修改 / 规范 / 开发）→ 设置页三个按钮 → 扫描与分析列表。
-2. **技术信息（折叠）**：规则集与兼容范围、13 个工具分组、安装/升级命令、安全边界、非官方认证声明。
+2. **技术信息（折叠）**：规则集与兼容范围、14 个工具分组、安装/升级命令、安全边界、非官方认证声明。
 3. **文案原则**：先说结果（“帮你检查并改好插件”），再说步骤（3 步 + 示例提示词），最后才出现 `engines.dsh`、factory bundle 等术语；不在首屏堆技术名词。
+
+## Desktop Profile Deployment（1.3.0）
+
+桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`；只挂在 `web` 的插件，client 半体不会进入桌面版的 `window.__DSH_BOOT__` graph。
+
+- `src/profiles.js`：`resolveDshHome`、`parseMountRows`、`inspectProfile`、`inspectDeployment`、`ensureDesktopMount`。
+- `dshpd_analyze` / `dshpd_ui_check` / `dshpd_verify` / `/analyze` 返回 `deployment.desktop` / `deployment.web`：`mounted`、`row`、`packageResolvable`、`patchPath`。
+- `dshpd_ui_check` 额外返回 `rootCause`：`DESKTOP_PROFILE_NOT_MOUNTED` / `CLIENT_NOT_DISCOVERED_IN_GRAPH`，并给出修复步骤。
+- `dshpd_mount`：默认 dryRun；`apply:true` 先备份 patch，再追加 `- insert: - id: <包名>`；返回 `restartRequired`。
+- `dshpd_design` 固定生成「Desktop Profile Deployment」章节 + M-PROFILE-* 项；`design.meta.json` 记录 `deployment.expected`，`dshpd_verify` 未挂载时 FAIL（DESKTOP_PROFILE_MOUNT）。
+- 桌面版重启是必需的：client-modules 的“非 client 包”判定会缓存到重启。
 
 ## 无 UI 插件的 UI 提案（1.2.3）
 
@@ -116,8 +127,8 @@ dsh-plugin-design/
 
 ## 验证计划
 
-- **静态**：`npm test`（28 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、无 UI 插件的 UI 提案、13 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
-- **运行时**：重启 dsh 后确认 13 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、`dshpd_ui_check` 能读到 `clientModules.graph()`、设置页扫描/分析返回 JSON。
+- **静态**：`npm test`（33 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、无 UI 插件的 UI 提案、14 工具/3 路由、desktop/web profile 挂载、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
+- **运行时**：重启 dsh 后确认 14 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、`dshpd_ui_check` 能读到 `clientModules.graph()` 并返回 desktop/web 挂载状态、设置页扫描/分析返回 JSON。
 - **生命周期**：插件卸载后工具、路由、slot 全部消失（由 `ctx` 注册与 `ctx.effect` 保证）。
 - 完整的 DH-TP-SDK 认证矩阵（§26–§34）需在 dsh 运行时内由 `dshpd_analyze` + 人工验证完成，属启发式 + 手动范畴。
 
