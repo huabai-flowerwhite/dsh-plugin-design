@@ -1,22 +1,167 @@
 # dsh plugin design
 
-一个帮你**检查、改造和开发 DSH 插件**的插件。
+> 给 DSH 插件做体检、改造和 **UI 落地**。桌面端优先。
 
-它会先读你的插件、指出不符合官方规范的地方，生成一份可执行的 `design.md`（施工图）；你确认后，它再按施工图修改插件、迁移清单、做校验，改坏了还能回滚。整个过程都在聊天框里完成，设置页只负责扫描、分析和生成提示词。
+一句话：**它先帮你把插件问题讲清楚，再生成一份可执行的 `design.md`；你确认后，它按施工图修改插件、补 UI、挂载到桌面端并做校验。**
 
-> 适用对象：想排查插件兼容问题、把旧插件升级到新规范，或按官方规范从零开发 DSH 插件的用户。
+它特别适合三类事：
+
+- **桌面端设置页 / 悬浮层 / 面板不出现**：先判断是没挂载到 `desktop` profile，还是 client bundle 过期、slot/路由失效，再给出修复步骤。
+- **插件没有 UI**：自动在 `design.md` 里补一份 UI 方案，先用文字线框告诉你大概长什么样，确认后再开发。
+- **旧插件要升级 / 规范化**：对照官方 0.2.x 契约检查清单、bundle、client、安装方式、安全与生命周期风险，改完可校验、可回滚。
+
+> 适用对象：使用 **DSH 桌面版**，想排查插件 UI、把 web 插件迁到桌面端、或按官方规范开发插件的用户。
 >
 > 说明：DH-TP-SDK 的 Bronze/Silver/Gold、P0–P4、S0–S4 是工程化等级，不是 DeepSeek 官方认证。
 
-## 它能帮你做什么
+---
 
-- **检查现有插件**：兼容范围、安装方式、设置页 UI、bundle/client 配置、安全与生命周期风险。
-- **生成改造方案**：输出 `design.md`，写清楚要改哪些文件、为什么改、怎么验证。
-- **确认后动手**：按 `design.md` 修改 / 规范已有插件，或者继续开发新插件；改完可校验、可回滚。
+## 30 秒判断：你可能正需要它
 
-## 安装 / 升级
+| 你遇到的现象 | 它怎么帮你 |
+|---|---|
+| 插件明明装了，桌面版设置页却没有入口 | 检查 `desktop` profile 是否挂载；没挂载就生成挂载行，`dshpd_mount` 可备份并追加 |
+| 设置页以前有，升级 DSH 后消失 | 检查运行中的 client graph，区分「没挂载」「没重启」「bundle 过期」「slot/路由失效」 |
+| 插件只有 Host 能力，没有界面 | 在 `design.md` 生成 UI 方案：入口、文字线框、页面区块、数据/路由、实现清单 |
+| 改完 client 源码，页面还是旧 UI | 检查 `src/client` 与 `lib/client.js` 的时间差，提醒重新构建 |
+| 不知道从哪里开始改 | 先分析，产出 `design.md`；你审核后再动手，不会一上来就改源码 |
 
-### 方式一：官方 bundle 安装（推荐，DSH 0.1.5+）
+---
+
+## 桌面端 UI 助力（本插件最核心的价值）
+
+### 为什么桌面端 UI 容易“消失”
+
+DSH 桌面版启动时加载的是 `desktop` profile（目录 `$DSH_HOME/profiles/desktop/`）。第三方插件通常通过在这个文件里登记 insert row 来挂载：
+
+```text
+$DSH_HOME/profiles/desktop/cordis.patch.yml
+```
+
+它**不会**因为某个插件装在 `profiles/web` 里就自动加载它。插件没登记在 `desktop` profile：
+
+1. 包不会被桌面版 Loader 挂载；
+2. 它的 client 半体不会进入桌面端页面的启动 graph；
+3. 设置页 / 悬浮层自然没有入口。
+
+这跟插件代码写得好不好是两件事。**先看挂载，再看 UI 代码。**
+
+### 它具体能帮你做什么
+
+1. **诊断桌面端 UI**
+   `dshpd_ui_check` 同时看两件事：
+   - 运行中的 client graph：`inGraph`、`rev`、`clientPath`
+   - 源码与构建：`buildStale`、`apply` / `inject`、UI 座位、client 路由
+
+2. **判断根因**
+   返回 `rootCause`：
+   - `DESKTOP_PROFILE_NOT_MOUNTED`：desktop patch 没这个包，web 挂载无效
+   - `CLIENT_NOT_DISCOVERED_IN_GRAPH`：已挂载，但需要重启桌面版或修清单
+
+3. **补 UI 方案**
+   插件没有 `dsh.client` 时，`dshpd_design` 自动生成「UI 方案建议」：
+   - 入口：默认注册到设置导航（`settings.section`，标题为「<插件名> 设置」）
+   - 文字线框：先让你看懂大概长什么样
+   - 页面区块：状态、配置/能力、最近结果、空/错误状态
+   - 数据与路由：Host 怎么提供数据、client 怎么请求
+   - 实现清单：`dsh.client`、factory bundle、构建脚本、slot 注册、验证
+
+4. **真正挂载到桌面端**
+   `dshpd_mount` 默认只预览要追加的 YAML；`apply: true` 时先备份 desktop patch，再追加挂载行。追加后必须**重启桌面版**。
+
+5. **开发阶段不跑偏**
+   `design.md` 固定包含「Desktop Profile Deployment」和 `M-PROFILE-*` 项；`design.meta.json` 记录 `deployment.expected`，`dshpd_verify` 发现没挂载会直接 FAIL。
+
+> **最短路径：** 在聊天框输入：
+>
+> `使用 dsh plugin design 检查 <插件路径> 的 UI，告诉我为什么没显示、要怎么修。`
+>
+> 先看 `deployment.desktop.mounted` 和 `rootCause`，再决定是 `dshpd_mount`、重启，还是改 client 代码。
+
+### 一张图看懂 UI 排查顺序
+
+```text
+设置页 / 悬浮层没出现
+        │
+        ├─ desktop profile 没挂载？
+        │     → dshpd_mount（先 dryRun，再 apply:true）
+        │     → 重启桌面版
+        │
+        ├─ 已挂载，但 inGraph=false？
+        │     → 重启桌面版（client 判定会缓存）
+        │     → 仍失败：查 dsh.client / exports["./client"] / lib/client.js
+        │
+        └─ inGraph=true，但页面空白 / 旧 UI？
+              → buildStale：重新构建 lib/client.js
+              → CLIENT_ROUTE_MISSING：补 Host 路由
+              → CLIENT_NO_UI_SLOT / LEGACY_SLOT：改 slot 名称
+              → CLIENT_STYLES_SERVICE：去掉已移除的 styles.insert
+```
+
+更完整的排查与构建说明见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
+
+---
+
+## 怎么用（聊天框，3 步）
+
+### 第 1 步：分析，产出 `design.md`
+
+在聊天框输入：
+
+```text
+使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。
+先只分析，不要修改代码。
+如果插件没有 UI，请给出 UI 方案，并先描述大致样貌。
+```
+
+Agent 会扫描插件，把设计写到：
+
+```text
+<插件目录>/.dsh-plugin-design/design.md
+```
+
+`design.md` 会写清楚：
+
+- 插件现状与官方契约对比
+- 发现的问题（按严重度）
+- 要改哪些文件、每项怎么改
+- **Desktop Profile Deployment**：桌面端是否已挂载、怎么挂载
+- **UI 方案建议**（原本没有 UI 时）或 **UI 恢复与验证**（原本有 UI 时）
+- 怎么验证、怎么回滚
+
+### 第 2 步：你审核 `design.md`
+
+重点看三件事：
+
+1. **UI 入口和大致样貌**是否符合预期（Agent 应先用文字线框向你描述）；
+2. **桌面端挂载方案**是否清楚（追加哪一行、什么时候重启）；
+3. 修改范围、风险和验证方式是否可接受。
+
+不满意就直接告诉 Agent，让它更新 `design.md`，直到你确认。
+
+### 第 3 步：确认后修改 / 规范 / 开发
+
+```text
+design.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，
+完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。
+```
+
+Agent 会按门控流程执行：
+
+```text
+approve 审批 → backup 备份 → apply/migrate 修改
+→ verify 校验 → rollback/report（回滚 / 报告）
+```
+
+修改前会备份到 `<插件目录>/.dsh-plugin-design/backup/`。校验失败或结果不满意，可以回滚。
+
+> `design.md` 是施工图，不是终点。确认后可以继续让 Agent **修改现有代码**、**按规范重构**，或者**从零开发新插件**。只想先看分析结果的话，停在第 1 步或第 2 步即可，不会改任何源码。
+
+---
+
+## 安装 / 升级（桌面端优先）
+
+### 方式一：官方 bundle 安装（web profile / 有 `dsh` CLI）
 
 ```bash
 # 安装
@@ -29,7 +174,9 @@ dsh plugin --profile web add <本目录或 npm 包名>
 
 `--profile` 要写在 `add` / `remove` 等 pnpm 参数之前。安装成功后，本包会进入 profile 的 `dsh.profile.bundles`，工具和设置页由 bundle patch 自动挂载。
 
-### 方式二：仓库脚本（没有 `dsh` CLI 时）
+> **桌面版不要用这条命令**：`dsh plugin --profile desktop` 会被拒绝，请用下面的「方式二」指定 `-Profile desktop`。
+
+### 方式二：仓库脚本（没有 `dsh` CLI，或桌面端）
 
 **Windows**
 
@@ -51,91 +198,75 @@ bash install.sh
 
 脚本检测到 `dsh` 时走官方安装；否则把包链接进 `$DSH_HOME/profiles/node_modules` 与 `profiles/<profile>/node_modules`（如存在），并向 profile `cordis.patch.yml` 追加一行。脚本是幂等的，也会避免「bundle + patch 双挂载」。
 
-> **桌面端**使用 `desktop` profile（由 Electron 托管，`dsh plugin --profile desktop` 会被拒绝）。要在桌面端使用，安装时加 `-Profile desktop`（Windows）或 `--profile desktop`（Linux/macOS），走 link 模式。
+### 桌面端怎么装
 
-安装完重启 dsh（或让 HMR 重载）并刷新页面，就能在聊天框看到 14 个 `dshpd_*` 工具，并在「设置 → dsh plugin design」看到设置页。
+桌面版使用 `desktop` profile（由 Electron 托管，`dsh plugin --profile desktop` 会被拒绝）。请在安装时显式指定：
+
+```powershell
+# Windows：桌面端
+powershell -ExecutionPolicy Bypass -File install.ps1 -Profile desktop -Mode link
+```
+
+```bash
+# Linux / macOS：桌面端
+bash install.sh --profile desktop --mode link
+```
+
+安装完**重启桌面版**，再刷新页面，就能在聊天框看到 14 个 `dshpd_*` 工具，并在「设置 → dsh plugin design」看到设置页。
 
 > 运行中新增挂载时，Host 半体可能立即生效；Client 半体需要刷新页面（Ctrl+R / Cmd+R）或重启应用，设置页才会出现在导航里。
 
-## 桌面版优先（desktop profile）
-
-当前桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`；挂在 `web` profile 的插件对桌面版**不可见**，`dsh-client-modules` 也不会把它的 client 半体放进桌面版的 graph。
-
-- `dshpd_analyze` / `dshpd_design` / `dshpd_ui_check` 都会返回 `deployment.desktop` / `deployment.web` 的挂载与包解析状态。
-- `design.md` 固定包含「Desktop Profile Deployment」；未挂载时给 M-PROFILE-* 项和可直接追加的 YAML。
-- `dshpd_mount({ packageName, apply: true })` 会先备份 desktop patch，再追加 `- insert: - id: <包名>`；默认不写，只返回要追加的内容。
-- 追加后必须**重启桌面版**；仅刷新页面不够，因为 client-modules 的“非 client 包”判定会缓存到重启。
-- 如果 `deployment.desktop.packageResolvable=false`，先把包 link/install 到 `$DSH_HOME/profiles/node_modules`，再挂载。
-
-> 网页版和桌面版插件都按同一套契约处理；最终交付默认以 desktop profile 可加载为准。
-
-## 怎么用（聊天框，3 步）
-
-### 第 1 步：让 Agent 分析，产出 `design.md`
-
-在聊天框输入：
-
-```text
-使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。
-先只分析，不要修改代码。
-```
-
-Agent 会扫描插件、对照官方规范和 DH-TP-SDK，把 `design.md` 写到：
-
-```text
-<插件目录>/.dsh-plugin-design/design.md
-```
-
-`design.md` 会列出：插件现状、发现的问题、要改哪些文件、每项怎么改、怎么验证。
-
-如果插件**没有 UI**，`design.md` 会额外生成「UI 方案建议」：入口（默认 `settings.section`）、文字线框、页面区块、数据/路由、实现清单。Agent 应先向你描述 UI 的大致样貌，确认后再开发。
-
-### 第 2 步：你审核 `design.md`
-
-打开 `design.md` 看一遍，特别是有 UI 方案时确认入口、页面区块和交互是否符合预期。如果方案不合适，直接告诉 Agent 你的意见，让它更新 `design.md`，直到你满意。
-
-### 第 3 步：确认后修改 / 规范 / 开发
-
-确认后输入：
-
-```text
-design.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，
-完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。
-```
-
-Agent 会按门控流程执行：
-
-```text
-approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → rollback/report
-```
-
-修改前会备份到 `<插件目录>/.dsh-plugin-design/backup/`，校验失败或结果不满意可以回滚。
-
-> **注意：** 产出 `design.md` 只是“施工图”，不是终点。确认后可以继续让 Agent **修改现有代码**、**按规范重构**，或者**从零开发新插件**。如果你只想先看看分析结果，停在第 1 步或第 2 步即可，不会修改任何源码。
+---
 
 ## 在设置页使用
 
 「设置 → dsh plugin design」提供三个快捷操作：
 
 - **扫描**：列出一个目录下的第三方插件项目。
-- **分析**：只读检查某个插件，显示总体结论和主要问题。
+- **分析**：只读检查某个插件，显示总体结论、主要问题，以及 **桌面 profile 是否已挂载**。
 - **规范修改**：生成一段带插件路径的聊天框提示词，复制到聊天框继续第 1 步。
 
-  也可以直接点某个插件行的「规范修改」，提示词会自动带上它的路径。
+也可以直接点某个插件行的「规范修改」，提示词会自动带上它的路径。
 
-  ![How‑to Showcase](<How‑to Showcase.png>)
+![How‑to Showcase](<How‑to Showcase.png>)
 
 设置页的扫描和分析都是只读的，不会修改文件；真正的修改只发生在聊天框第 3 步。
 
-## UI 恢复（client 插件重点）
+---
 
-### 插件原本没有 UI
+# 以下是详细说明（面向开发与排障）
 
-`dshpd_design` 默认 `ui: "auto"`：检测到插件没有 `dsh.client` 时，`design.md` 会自动生成「UI 方案建议」，并在返回结果里给出 `ui.wireframe` / `ui.userMessage` / `ui.sections` / `ui.dataPlan`。Agent 应先用 `ui.userMessage` 把 UI 的大致样貌告诉你（入口在哪、页面分几块、有哪些按钮/状态），你确认后再把它作为 M-UI-* 任务开发。
+## UI：没有 UI 时自动提案
 
-如果明确不需要 UI，告诉 Agent“不做 UI”，或调用 `dshpd_design` 时传 `ui: "off"`。
+`dshpd_design` 默认 `ui: "auto"`。目标插件没有 `dsh.client` 时，会生成「UI 方案建议（待用户确认）」：
 
-### 插件原本有 UI，但升级后消失
+- `.dsh-plugin-design/design.md` 增加完整章节；
+- 工具返回 `ui.summary` / `ui.userMessage` / `ui.wireframe` / `ui.sections` / `ui.dataPlan` / `ui.implementation`；
+- `ui.userMessage` 是一段可直接转述给用户的中文说明，含文字线框；
+- 用户确认后，按 `M-UI-*` 实施：
+  - `M-UI-1`：`package.json` 增加 `dsh.client` / `exports["./client"]` / `files`
+  - `M-UI-2`：新增 `src/client.js` 与构建脚本，产出 factory-form `lib/client.js`
+  - `M-UI-3`：Host 增加状态/配置路由（`ctx.inject(['webServer'], ...)`）
+  - `M-UI-4`：client 注册 `settings.section`（或 design 确定的其它座位）
+  - `M-UI-5`：重新构建 → 刷新 → `dshpd_ui_check` → `dshpd_verify`
+
+示例（design.md 里的文字线框，实际视觉会跟随 Harness 主题）：
+
+```text
+┌──────────────────────────────┐
+│ <插件名> 设置          v0.1.0 │
+│ 状态：运行中 / 未配置         │
+├──────────────────────────────┤
+│ 配置区：字段 A [____]        │
+│         字段 B [x]           │
+├──────────────────────────────┤
+│ [保存] [重载] [查看最近结果] │
+└──────────────────────────────┘
+```
+
+如果明确不需要 UI：告诉 Agent“不做 UI”，或调用 `dshpd_design` 时传 `ui: "off"`。
+
+## UI：原本有 UI，升级后消失
 
 先运行：
 
@@ -143,36 +274,69 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 使用 dsh plugin design 检查 <插件路径> 的 UI，告诉我为什么没显示、要怎么修。
 ```
 
-完整的排查顺序、构建产物契约与当前可用座位见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
-
-对应工具是 `dshpd_ui_check`，它会同时看**源码/构建产物**和**当前运行中的 client graph**：
+`dshpd_ui_check` 会同时检查源码/产物与运行中的 client graph：
 
 | 检查结果 | 含义 | 处理 |
 |---|---|---|
-| `runtime.inGraph = false` | 页面根本没有注册这个 client 半体 | 检查 Loader row 是否为裸包名、`dsh.client`、`exports["./client"]`，然后重启/刷新 |
-| `buildStale = true` | `src/client` 比 `lib/client.js` 新，页面加载的还是旧 UI | 重新构建 client bundle（如 `npm run build:client`）后刷新 |
-| `CLIENT_NO_BUILD_SCRIPT` | 有 client 源码但没有 build/prepare 命令 | 先补可重复的构建脚本，否则改完源码无法生成新 bundle |
-| `CLIENT_ROUTE_MISSING` | client fetch 的本地路由在 Host 源码里找不到，请求落到 SPA 的 HTML | 补 `webServer.register({ path })`，或修正 fetch 路径 |
+| `runtime.inGraph = false` | 页面没有注册这个 client 半体 | 先看 `rootCause`；`DESKTOP_PROFILE_NOT_MOUNTED` 用 `dshpd_mount`，`CLIENT_NOT_DISCOVERED_IN_GRAPH` 重启桌面版 |
+| `deployment.desktop.mounted = false` | desktop patch 没有该包，web 挂载对桌面版无效 | `dshpd_mount({ packageName, apply: true })`，然后重启 |
+| `buildStale = true` | `src/client` 比 `lib/client.js` 新，页面加载旧 UI | 重新构建 client bundle 后刷新 |
+| `CLIENT_NO_BUILD_SCRIPT` | 有 client 源码但没有 build/prepare 命令 | 先补可重复构建脚本，否则改完源码无法生成新 bundle |
+| `CLIENT_ROUTE_MISSING` | client fetch 的本地路由在 Host 源码里找不到，请求落到 SPA HTML | 补 `webServer.register({ path })`，或修正 fetch 路径 |
 | `WEBSERVER_NOT_INJECTED` | 用了 `ctx.webServer` 但没有等待 `webServer` 服务 | 加 `inject` 或用 `ctx.inject(['webServer'], ...)` |
 | `CLIENT_STYLES_SERVICE` | 使用了已移除的 `styles.insert` | 改为插件自己创建 `<style>` 或内联 style |
 | `CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT` | factory 模块没有导出 `apply` / `inject` | 修构建出口 |
 | `CLIENT_NO_UI_SLOT` | 没有注册任何已知 UI 座位 | 检查是否用了已移除的 slot 名称 |
 | `CLIENT_LEGACY_SLOT` | 用了旧版 `settings.plugin.item` 等 slot | 改用 `settings.section` / `settings.plugins.tab` / `plugins.item` |
 
-> UI 修复的正确顺序：改 client 源码 → **重新构建** `lib/client.js` → 刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → 再跑 `dshpd_verify`。
+> 修复顺序：改 client 源码 → **重新构建** `lib/client.js` → 刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → 再跑 `dshpd_verify`。
 
-## 工作流程（原理）
+## 桌面端部署：profile 机制
+
+桌面版加载 `desktop` profile；第三方插件通过 `$DSH_HOME/profiles/desktop/cordis.patch.yml` 的 insert row 挂载。`profiles/web` 的挂载对桌面版无效。
+
+- `dshpd_analyze` / `dshpd_ui_check` / `dshpd_verify` / `/analyze` 都返回：
+
+  ```json
+  {
+    "deployment": {
+      "desktop": {
+        "mounted": true,
+        "patchPath": ".../profiles/desktop/cordis.patch.yml",
+        "packageResolvable": true,
+        "packagePath": "..."
+      },
+      "web": { "mounted": true }
+    }
+  }
+  ```
+
+- `dshpd_mount({ packageName })` 默认 dryRun，只返回要追加的 YAML；
+- `dshpd_mount({ packageName, apply: true })`：
+  1. 备份 patch 为 `.bak-dshpd-<时间戳>`；
+  2. 追加 `- insert: - id: <包名>`；
+  3. 返回 `restartRequired: true` 和验证命令；
+- 追加后**必须重启桌面版**，因为 client-modules 对“非 client 包”的判定会缓存到重启；
+- 如果 `deployment.desktop.packageResolvable=false`，先把包 link/install 到 `$DSH_HOME/profiles/node_modules`，再挂载。
+
+`design.md` 固定包含「Desktop Profile Deployment」，未挂载时给 `M-PROFILE-*` 和可直接追加的 YAML。
+
+## 工作流程与安全边界
 
 ```text
 阶段 1（只读分析）
-  discover → inspect → analyze → design（生成 design.md）
+  discover → inspect → analyze → ui_check → design（生成 design.md）
 
 阶段 2（你确认后）
-  approve（门控）→ backup（备份）→ apply / migrate（修改 / 迁移清单）
+  approve（门控）→ backup（备份）→ apply / migrate（修改 / 迁移）
   → verify（校验）→ rollback / report（回滚 / 报告）
 ```
 
-安全边界：分析先于修改、设计先于执行；未确认不修改；修改前备份、失败可回滚、改后可校验；不修改 Core、不使用 private API。
+- 分析先于修改，设计先于执行；
+- 未确认不修改；
+- 修改前备份，失败可回滚，改后可校验；
+- 不修改 Core，不使用 private API；
+- `dshpd_mount` 写 profile patch 前会先备份；默认 dryRun，只有显式 `apply:true` 才写。
 
 ## 工具清单（14 个）
 
@@ -188,10 +352,34 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 | 执行 | `dshpd_backup` | 快照待改文件（含 hash 与分析摘要，持久化） |
 | 执行 | `dshpd_apply` | 单文件字面量替换；三重校验 + 写前 hash 校验 + `dryRun` |
 | 执行 | `dshpd_migrate` | 仅改 `package.json` 的受限迁移（`engines.dsh`、`dsh.bundle`、`dsh.client` 等） |
-| 执行 | `dshpd_verify` | 校验备份、文件可解析、无冲突标记、client bundle 形态、分析是否退化 |
+| 执行 | `dshpd_verify` | 校验备份、文件可解析、无冲突标记、client bundle 形态、桌面挂载、分析是否退化 |
 | 恢复 | `dshpd_rollback` | 从备份恢复（重启后仍可用） |
 | 报告 | `dshpd_status` | 查看内存任务，或按插件路径列出磁盘备份与 journal |
 | 报告 | `dshpd_report` | 输出修改报告：备份文件、编辑/迁移、校验结果、前后分析、剩余风险 |
+
+## 专业细节：规则与架构
+
+### 规则集（`src/rules.js`）
+
+纯函数、无 I/O，便于单测和复用。覆盖：
+
+- **官方契约**：`engines.dsh`、`dsh.manifestVersion`、`dsh.bundle.patch`、`dsh.client`、Host 入口、`exports`、图标、`type: module`、npm `files`。
+- **0.2.0 移除项**：`@deepseek-ai/dsh-invariants`、`<pkg>/invariant`、旧 patch 行、子路径 `package.json`。
+- **UI**：构建过期、无构建脚本、bundle 缺 `apply`/`inject`、旧 slot、React 未引入、已移除的 `styles.insert`、client 路由缺失、webServer 未注入。
+- **源码安全**：globalThis/window/prototype patch、类型断言绕过、模块级 session 状态、危险命令、命令注入、硬编码密钥、`eval`/`new Function`、定时器未清理、工具缺 `output`、waterfall 缺 `next()`。
+
+### 持久化状态
+
+- `backup/<backupId>/manifest.json`：插件路径、design 路径、文件列表（路径 / 备份名 / 字节数 / sha256）、备份时分析摘要；
+- `journal.jsonl`：`backup` / `apply` / `migrate` / `verify` / `rollback` 条目，保留最近 500 条；
+- `design.md` / `design.vN.md`：由 `dshpd_design` 生成；
+- `design.meta.json`：`ui.expected`、`deployment.expected` 等，供 `dshpd_verify` 校验。
+
+### Host / Client 半体
+
+- **Host**：`src/host.js`，14 个工具 + 3 条只读设置页路由；`fs` / `sandboxPolicy` 从 `exec.agent.ctx` 取；`webServer` 通过 `ctx.inject(['webServer'], ...)` 可选注入。
+- **Client**：`src/client.js` → `scripts/build-client.mjs` → `lib/client.js`（factory-form，`window.__ModuleLoader__.load({ id, factory })`）；`id` 必须等于包名。
+- **设置页**：注册 `settings.section`；扫描/分析只读，修改只在聊天框执行。
 
 ## 兼容性
 
@@ -202,14 +390,12 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 ## 1.3.0 更新要点
 
-- **桌面版优先**：分析/设计/校验都检查 `profiles/desktop` 与 `profiles/web`。桌面版只读 desktop profile；web 挂载对桌面版无效。`design.md` 固定增加「Desktop Profile Deployment」，未挂载时给 M-PROFILE-* 项和可追加的 YAML。
+- **桌面版优先**：分析/设计/校验都检查 `profiles/desktop` 与 `profiles/web`。桌面版加载 desktop profile；web 挂载对桌面版无效。`design.md` 固定增加「Desktop Profile Deployment」。
 - **`dshpd_mount`**：默认 dryRun 返回挂载行；`apply:true` 先备份 `cordis.patch.yml` 再追加 `- insert: - id: <包名>`，提示重启桌面版并用 `dshpd_ui_check` 确认 `inGraph=true`。
 - **`dshpd_ui_check` 根因**：`rootCause=DESKTOP_PROFILE_NOT_MOUNTED` 表示 desktop patch 没挂载（web 挂载无效）；`CLIENT_NOT_DISCOVERED_IN_GRAPH` 表示已挂载但需重启/修清单。
-- **无 UI 插件的 UI 提案**：`dshpd_design` 默认 `ui: "auto"`，目标插件没有 `dsh.client` 时自动在 `design.md` 增加 UI 方案建议（入口、文字线框、页面区块、数据/路由、实现清单），并返回 `ui.userMessage` / `ui.wireframe` 供 Agent 先向用户描述大致样貌；`design.meta.json` 记录 `ui.expected`，`dshpd_verify` 用 `UI_EXPECTED` 检查是否真的实现。
-- **UI 恢复能力**：`dshpd_ui_check` 检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_apply` 改 client 源码时提示重新构建。
-- 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
-- 设置页文案重写：先讲“能帮你做什么”，再给 **3 步聊天框用法**；明确 **产出 `design.md` 后可以继续修改 / 规范 / 开发插件**。
-- README 重排为「安装 → 使用 → 原理 → 技术信息」，并补充设置页三个按钮的说明。
+- **无 UI 插件的 UI 提案**：`dshpd_design` 默认 `ui: "auto"`，目标插件没有 `dsh.client` 时自动生成 UI 方案，并返回 `ui.userMessage` / `ui.wireframe`；`design.meta.json` 记录 `ui.expected`，`dshpd_verify` 用 `UI_EXPECTED` 检查是否真的实现。
+- **UI 恢复能力**：`dshpd_ui_check` 检查 `clientModules.graph()`、构建过期、apply/inject、UI 座位、client 路由。
+- 规则增强：Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
 - 版本号 `1.2.3` → `1.3.0`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
 
 <details>
@@ -243,6 +429,7 @@ dsh-plugin-design/
 ├── src/
 │   ├── index.js                # Host 入口 → host.js
 │   ├── host.js                 # 14 个工具、持久化备份/journal、设置页只读路由
+│   ├── profiles.js             # desktop/web profile 挂载、包解析、mount
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
 └── tests/                      # 33 个规则/宿主/客户端/bundle/部署测试 + 3 个插件样本
@@ -260,7 +447,7 @@ npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 
 ## 已知限制
 
-1. `dsh.plugin.yaml` 为「缩进感知」的启发式解析，非完整 YAML。
+1. `dsh.plugin.yaml` 为“缩进感知”的启发式解析，非完整 YAML。
 2. 静态分析是启发式规则，非权威认证；client 共享模块检查是 import 语句级。
 3. 审批 token 为进程内状态（重启失效，需重新 `approve`）；备份、journal、报告是磁盘持久化。
 4. git 状态 / 真实测试执行依赖 Agent 侧 shell 工具，插件自身不跑 shell。
@@ -269,10 +456,12 @@ npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 7. 阶段 1 的读取与阶段 2 的写入都走 agent 平面 `fs` 与 `sandboxPolicy`：目标插件在会话 workspace 之外时，需要 danger-full-access，或把会话 cwd 设到插件父目录。
 8. npm `files` 覆盖检查是目录前缀启发式；ESM 检测是 `.js/.mjs` 源码的 `import/export` 语法扫描，不做 npm pack 模拟。
 9. UI 构建过期基于文件 mtime；从 npm/git 重新检出可能重置 mtime，需以 `dshpd_ui_check` 的运行时结果为准。`CLIENT_ROUTE_MISSING` 是字符串级启发式（只识别字面量 `fetch('/x')` 与 `path: '/x'`）。
+10. `dshpd_mount` 只追加 desktop patch 行，不自动 link/install 包；`deployment.desktop.packageResolvable=false` 时需要先手动 link/install。
 
 ## 更多文档
 
 - [官方插件契约（0.2.x）与规则映射](docs/official-plugin-contract-0.2.md)
+- [UI 恢复与构建指南](docs/client-ui-recovery.md)
 - [实现设计与落地经验](design.md)
 - [变更记录](CHANGELOG.md)
 - [DH-TP-SDK 工程化规范](DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md)

@@ -161,7 +161,7 @@ dsh plugin --profile web add ./my-plugin
 
 ## 9.2 桌面版 profile（0.2.x 实际部署）
 
-- 桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`；`profiles/web` 的挂载对桌面版无效。
+- 桌面版加载 `desktop` profile，第三方插件通过 `$DSH_HOME/profiles/desktop/cordis.patch.yml` 的 insert row 挂载；`profiles/web` 的挂载对桌面版无效。
 - `dsh-client-modules` 只扫描当前 host Loader 中已挂载的 entries；包没挂载时 `clientPath=null`，client 半体不会进入 `window.__DSH_BOOT__` graph。
 - `dshpd_analyze` / `dshpd_ui_check` / `dshpd_verify` 返回 `deployment.desktop` / `deployment.web`：`mounted`、`packageResolvable`、`patchPath`。
 - `dshpd_mount` 默认 dryRun；`apply:true` 先备份 patch，再追加 `- insert: - id: <包名>`。追加后必须重启桌面版（client-modules 的“非 client 包”判定会缓存到重启）。

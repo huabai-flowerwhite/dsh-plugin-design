@@ -36,7 +36,7 @@
 
 ### 桌面版先看 profile
 
-桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`。如果插件只挂在 `profiles/web`：
+桌面版加载 `desktop` profile，第三方插件通过 `$DSH_HOME/profiles/desktop/cordis.patch.yml` 的 insert row 挂载。如果插件只挂在 `profiles/web`：
 
 - `runtime.inGraph=false`，`deployment.desktop.mounted=false`，`rootCause=DESKTOP_PROFILE_NOT_MOUNTED`；
 - 这不是代码/清单问题，改代码不会让 UI 出现；

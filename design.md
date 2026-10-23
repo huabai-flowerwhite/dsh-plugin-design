@@ -69,7 +69,7 @@ dsh-plugin-design/
 
 ## Desktop Profile Deployment（1.3.0）
 
-桌面版只读 `$DSH_HOME/profiles/desktop/cordis.patch.yml`；只挂在 `web` 的插件，client 半体不会进入桌面版的 `window.__DSH_BOOT__` graph。
+桌面版加载 `desktop` profile，第三方插件通过 `$DSH_HOME/profiles/desktop/cordis.patch.yml` 的 insert row 挂载；只挂在 `web` 的插件，client 半体不会进入桌面版的 `window.__DSH_BOOT__` graph。
 
 - `src/profiles.js`：`resolveDshHome`、`parseMountRows`、`inspectProfile`、`inspectDeployment`、`ensureDesktopMount`。
 - `dshpd_analyze` / `dshpd_ui_check` / `dshpd_verify` / `/analyze` 返回 `deployment.desktop` / `deployment.web`：`mounted`、`row`、`packageResolvable`、`patchPath`。
