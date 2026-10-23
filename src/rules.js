@@ -72,6 +72,19 @@ const CLIENT_BASELINE = new Set([
 const ICON_EXTENSIONS = new Set(['svg', 'png', 'jpg', 'jpeg', 'webp'])
 const ICON_MAX_BYTES = 256 * 1024
 
+/** Common UI seats a browser half can register into (used only as a heuristic hint). */
+const KNOWN_UI_SLOTS = [
+  'settings.section', 'settings.plugins.tab', 'settings.general.item', 'settings.onboarding',
+  'plugins.item', 'plugins.detail.', 'plugins.tab', 'plugins.bundle.',
+  'shell.overlay', 'tool.call.toolview', 'tool.call.images',
+  'conversation.', 'sidebar.', 'main', 'workspace.toast', 'rightbar.',
+]
+
+/** Slot names that belonged to older settings-card APIs and no longer exist. */
+const LEGACY_UI_SLOTS = [
+  'settings.plugin.item', 'settings.plugin.page', 'settings.plugin.card', 'settings.plugins.item',
+]
+
 const TEST_FILE = /(^|[\\/])(tests?|__tests__)([\\/]|$)|\.(test|spec)\.[^.]+$/i
 
 function isPlainObject(value) {
@@ -349,6 +362,41 @@ function sourceUsesEsm(sourceFiles) {
   return false
 }
 
+/** Quoted tokens from an `inject: [...]` / `export const inject = [...]` declaration. */
+function injectTokens(sourceFiles) {
+  const tokens = new Set()
+  for (const file of sourceFiles) {
+    if (!isPlainObject(file) || typeof file.content !== 'string') continue
+    for (const pattern of [/inject\s*:\s*\[([^\]]*)\]/g, /inject\s*=\s*\[([^\]]*)\]/g]) {
+      for (const match of file.content.matchAll(pattern)) {
+        for (const token of match[1].matchAll(/['"]([^'"]+)['"]/g)) tokens.add(token[1])
+      }
+    }
+  }
+  return tokens
+}
+
+/** Absolute fetch paths used by client source (query/hash removed). */
+function clientFetchPaths(clientFiles) {
+  const paths = new Set()
+  for (const file of clientFiles) {
+    if (!isPlainObject(file) || typeof file.content !== 'string') continue
+    for (const match of file.content.matchAll(/fetch\s*\(\s*['"`](\/[^'"`?\s#]+)/g)) paths.add(match[1])
+  }
+  return [...paths]
+}
+
+/** Route paths declared by host source (`path: '/x'`). */
+function hostRoutePaths(sourceFiles) {
+  const paths = new Set()
+  for (const file of sourceFiles) {
+    if (!isPlainObject(file) || typeof file.content !== 'string') continue
+    if (isTestSource(file.relative || file.path)) continue
+    for (const match of file.content.matchAll(/path\s*:\s*['"]([^'"]+)['"]/g)) paths.add(match[1])
+  }
+  return paths
+}
+
 function collectClientImports(sourceFiles) {
   const specifiers = new Set()
   for (const file of sourceFiles) {
@@ -431,6 +479,10 @@ export function analyzeModel(model) {
       exportTarget: null,
       bundlePresent: false,
       factoryForm: false,
+      buildStale: false,
+      applyPresent: false,
+      injectPresent: false,
+      uiSlots: [],
       externals: client !== null ? stringArray(client.external) : [],
     },
     profile: profile !== null,
@@ -749,6 +801,96 @@ export function analyzeModel(model) {
         })
       }
     }
+
+    // ---- UI restoration diagnostics --------------------------------------
+    const clientSourceText = (Array.isArray(model.clientSourceFiles) ? model.clientSourceFiles : [])
+      .map((file) => (isPlainObject(file) && typeof file.content === 'string' ? file.content : ''))
+      .join('\n')
+    const bundleText = typeof model.clientBundleRaw === 'string' ? model.clientBundleRaw : ''
+    const clientText = clientSourceText + '\n' + bundleText
+
+    official.client.applyPresent = /exports\s*\.\s*apply|module\.exports\s*=\s*\{[\s\S]*?\bapply\b/.test(bundleText)
+    official.client.injectPresent = /exports\s*\.\s*inject|(?:^|[^\w.])inject\s*[:=]/.test(bundleText)
+    official.client.uiSlots = KNOWN_UI_SLOTS.filter((slot) => clientText.includes(slot))
+
+    if (typeof model.clientSourceMtimeMax === 'number' && typeof model.clientBundleMtime === 'number'
+      && model.clientSourceMtimeMax > model.clientBundleMtime + 1500) {
+      official.client.buildStale = true
+      push({
+        id: 'CLIENT_BUILD_STALE', severity: 'HIGH', category: 'client',
+        title: 'client 源码比构建产物新（UI 可能还是旧版本）',
+        detail: 'src/client 的最后修改时间晚于 ' + String(clientExport === null ? model.defaultClientBundlePath : clientExport.target)
+          + '；修改源码后必须重新构建 lib/client.js，否则页面加载的仍是旧 UI。',
+        file: String(clientExport === null ? model.defaultClientBundlePath : clientExport.target),
+      })
+    }
+    if (model.clientBundleExists === true && !official.client.applyPresent) {
+      push({
+        id: 'CLIENT_BUNDLE_NO_APPLY', severity: 'HIGH', category: 'client',
+        title: 'client bundle 没有导出 apply',
+        detail: 'factory 返回的模块必须包含 exports.apply，否则客户端模块系统会注册一个没有插件的空模块，设置页/UI 不会出现。',
+        file: String(clientExport === null ? model.defaultClientBundlePath : clientExport.target),
+      })
+    }
+    if (model.clientBundleExists === true && !official.client.injectPresent) {
+      push({
+        id: 'CLIENT_BUNDLE_NO_INJECT', severity: 'MEDIUM', category: 'client',
+        title: 'client bundle 没有导出 inject',
+        detail: '依赖 slots 等客户端服务时应导出 exports.inject = ["slots"]，否则 apply 可能早于座位/服务就绪。',
+        file: String(clientExport === null ? model.defaultClientBundlePath : clientExport.target),
+      })
+    }
+    if (clientText.length > 0 && official.client.uiSlots.length === 0) {
+      push({
+        id: 'CLIENT_NO_UI_SLOT', severity: 'INFO', category: 'client',
+        title: 'client 半体没有注册已知 UI 座位',
+        detail: '源码/bundle 中没有 settings.section、settings.plugins.tab、shell.overlay、tool.call.toolview 等已知座位；如果它本应有设置页，请检查是否使用了已移除的 slot 名称。',
+        file: null,
+      })
+    }
+    for (const legacySlot of LEGACY_UI_SLOTS) {
+      if (clientText.includes(legacySlot)) {
+        push({
+          id: 'CLIENT_LEGACY_SLOT', severity: 'MEDIUM', category: 'client',
+          title: 'client 使用了旧版/不存在的 UI 座位：' + legacySlot,
+          detail: '当前设置页座位是 settings.section / settings.plugins.tab / settings.general.item；插件配置卡片是 plugins.item + ctx.configForms。旧座位名不会渲染。',
+          file: null,
+        })
+      }
+    }
+    if (/React\s*\.\s*(?:createElement|useState|useEffect|useRef|useMemo|useCallback)/.test(clientSourceText)
+      && !/require\s*\(\s*['"]react['"]\s*\)|from\s+['"]react['"]/.test(clientSourceText)) {
+      push({
+        id: 'CLIENT_REACT_MISSING', severity: 'HIGH', category: 'client',
+        title: 'client 源码使用 React 但没有 require/import',
+        detail: 'factory 里必须 require("react") 或 import；否则 apply/render 时 React 未定义，UI 直接白屏。',
+        file: null,
+      })
+    }
+    if (/styles\s*\.\s*insert|ctx\s*\.\s*get\s*\(\s*['"]styles['"]\s*\)/.test(clientText)) {
+      push({
+        id: 'CLIENT_STYLES_SERVICE', severity: 'HIGH', category: 'client',
+        title: '使用了已移除的 styles 服务',
+        detail: '当前 client 半体没有 styles.insert；样式应由插件自己创建 <style> 标签或用内联 style，否则 apply 会抛错、UI 不出现。',
+        file: null,
+      })
+    }
+    const routePaths = hostRoutePaths(sourceFiles)
+    for (const fetchPath of clientFetchPaths(Array.isArray(model.clientSourceFiles) ? model.clientSourceFiles : [])) {
+      if (/^\/(?:plugins|api|assets|static|favicon|login|health|manifest|socket)(?:\/|$)/.test(fetchPath)) continue
+      const covered = [...routePaths].some((route) => {
+        const normalizedRoute = route.replace(/\/+$/, '')
+        return fetchPath === normalizedRoute || fetchPath.startsWith(normalizedRoute + '/')
+      })
+      if (!covered) {
+        push({
+          id: 'CLIENT_ROUTE_MISSING', severity: 'HIGH', category: 'client',
+          title: 'client 请求的本地路由在 Host 源码中未找到',
+          detail: 'client fetch("' + fetchPath + '")，但 host 源码没有对应的 webServer.register({ path: ... })；请求会落到 SPA fallback（HTML），设置页读取 JSON 时报 Unexpected token "<"。',
+          file: null,
+        })
+      }
+    }
     if (exportsField !== null && exportsField['./package.json'] === undefined) {
       push({
         id: 'EXPORT_PACKAGE_JSON', severity: 'LOW', category: 'client',
@@ -780,6 +922,31 @@ export function analyzeModel(model) {
       detail: 'lib/client.js 看起来是浏览器半体，但 package.json 没有 dsh.client；客户端模块系统只扫描声明过的包。',
       file: 'package.json',
       migration: { id: 'client-meta', title: '声明 dsh.client 与 ./client 导出', tool: 'dshpd_migrate' },
+    })
+  }
+
+  // ---- host-plane service wiring (UI routes / fs scope) ----------------
+  const tokens = injectTokens(sourceFiles)
+  const nonTestSources = sourceFiles.filter((file) => isPlainObject(file) && !isTestSource(file.relative || file.path))
+  const usesWebServer = nonTestSources.some((file) => typeof file.content === 'string' && /ctx\s*\.\s*webServer\b/.test(file.content))
+  const injectsWebServer = tokens.has('webServer')
+    || nonTestSources.some((file) => typeof file.content === 'string' && /ctx\s*\.\s*inject\s*\(\s*\[[^\]]*webServer/.test(file.content))
+  if (usesWebServer && !injectsWebServer) {
+    push({
+      id: 'WEBSERVER_NOT_INJECTED', severity: 'HIGH', category: 'lifecycle',
+      title: '使用 ctx.webServer 但没有声明/等待 webServer',
+      detail: 'Host 半体要么在 inject 里声明 webServer，要么用 ctx.inject(["webServer"], ...) 等待服务；否则 apply 时 ctx.webServer 为 undefined，路由不注册，设置页请求会落到 SPA fallback。',
+      file: null,
+    })
+  }
+  const usesFs = nonTestSources.some((file) => typeof file.content === 'string' && /ctx\s*\.\s*fs\b/.test(file.content))
+  const usesAgentCtx = nonTestSources.some((file) => typeof file.content === 'string' && /exec\s*\.\s*agent|agent\s*\.\s*ctx/.test(file.content))
+  if (tokens.has('fs') && usesFs && !usesAgentCtx) {
+    push({
+      id: 'HOST_FS_HARD_INJECT', severity: 'MEDIUM', category: 'lifecycle',
+      title: 'host composition 硬注入 fs',
+      detail: 'fs 是 agent 平面服务；host composition 中 inject: ["fs"] 可能永远等不到依赖。改为在工具执行时从 exec.agent.ctx.get("fs") 取。',
+      file: null,
     })
   }
 

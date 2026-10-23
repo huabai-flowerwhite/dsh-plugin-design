@@ -26,6 +26,7 @@ capabilities:
     - com.example.dsh.plugin-design.tool.dshpd_discover
     - com.example.dsh.plugin-design.tool.dshpd_inspect
     - com.example.dsh.plugin-design.tool.dshpd_analyze
+    - com.example.dsh.plugin-design.tool.dshpd_ui_check
     - com.example.dsh.plugin-design.tool.dshpd_design
     - com.example.dsh.plugin-design.tool.dshpd_approve
     - com.example.dsh.plugin-design.tool.dshpd_backup

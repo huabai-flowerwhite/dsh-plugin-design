@@ -218,3 +218,60 @@ test('package metadata checks ESM type, icon limits and npm files coverage', () 
   assert.ok(ids.includes('PKG_FILES_BUNDLE_PATCH'))
   assert.ok(ids.includes('PKG_FILES_CLIENT_BUNDLE'))
 })
+
+test('UI diagnostics flag stale bundles, removed styles API, missing routes and missing apply', () => {
+  const clientSource = [
+    'const slots = ctx.slots',
+    "slots.register({ name: 'settings.section' })",
+    "styles.insert('.x{}')",
+    "fetch('/demo/missing')",
+    "const node = React.createElement('div')",
+  ].join('\n')
+  const hostSource = "ctx.webServer.register({ path: '/demo/ok', handler: () => {} })\n"
+  const result = analyzeModel({
+    pluginPath: 'X:/ui-fixture',
+    manifestRaw: null,
+    pkgRaw: '{}',
+    pkg: {
+      name: 'ui-fixture',
+      version: '1.0.0',
+      description: 'x',
+      icon: 'assets/icon.svg',
+      type: 'module',
+      engines: { dsh: '>=0.1.5-rc.1' },
+      exports: { '.': './src/index.js', './client': './lib/client.js' },
+      dsh: {
+        manifestVersion: 1,
+        bundle: { patch: './cordis.patch.yml' },
+        client: { platform: 'web' },
+      },
+    },
+    pkgError: null,
+    cordisPatchRaw: null,
+    bundlePatches: [{ path: './cordis.patch.yml', exists: true, raw: '- insert:\n    - id: ui-fixture\n      name: ui-fixture\n' }],
+    clientBundleExists: true,
+    clientBundleRaw: 'window.__ModuleLoader__.load({ id: "ui-fixture", factory: (require) => { return {}; } });',
+    defaultClientBundleExists: true,
+    clientSourceFiles: [{ path: 'X:/ui-fixture/src/client.js', relative: 'src/client.js', content: clientSource }],
+    clientSourceMtimeMax: 10000,
+    clientBundleMtime: 1000,
+    iconExists: true,
+    iconBytes: 100,
+    iconExt: 'svg',
+    sourceFiles: [
+      { path: 'X:/ui-fixture/src/client.js', relative: 'src/client.js', content: clientSource },
+      { path: 'X:/ui-fixture/src/host.js', relative: 'src/host.js', content: hostSource },
+    ],
+    hasTests: true,
+    hasReadme: true,
+    hasLicense: true,
+    harnessVersion: '0.2.1-rc.2',
+  })
+  const ids = result.issues.map((issue) => issue.id)
+  for (const expected of [
+    'CLIENT_BUILD_STALE', 'CLIENT_STYLES_SERVICE', 'CLIENT_REACT_MISSING',
+    'CLIENT_BUNDLE_NO_APPLY', 'CLIENT_ROUTE_MISSING', 'WEBSERVER_NOT_INJECTED',
+  ]) {
+    assert.ok(ids.includes(expected), 'missing finding ' + expected + '; got ' + ids.join(','))
+  }
+})

@@ -317,6 +317,7 @@ seam 正是“替换一个提供方就能改变整个产品”的原因：FS 与
 - 规则集 `0.2.1` 检查官方 `package.json.dsh`、`engines.dsh`、bundle、client、exports、图标、服务作用域、0.2.0 移除项与源码风险。
 - 两阶段工作流：`discover → inspect → analyze → design` 产出 `design.md`；确认后 `approve → backup → apply/migrate → verify → rollback/report`。
 - `design.md` 是施工图，不是终点：确认后可以继续修改现有插件、按规范重构，或从零开发新插件。
+- UI 恢复：`dshpd_ui_check` 同时检查静态产物（bundle 是否过期、`apply`/`inject`、slot、Host 路由）与运行中的 `clientModules.graph()`（`inGraph` / `rev` / `clientPath`），用于定位“DSH 升级后设置页消失”这类问题。
 
 ## 14. 技术结论
 

@@ -138,6 +138,19 @@ dsh plugin --profile web add ./my-plugin
 - 硬 `inject: ['fs']` 的 host composition 插件可能永远等不到依赖而无法加载。
 - `webServer` 是 host 平面服务；用它注册 HTTP 路由时应 `ctx.inject(['webServer'], ...)`，避免 apply 早于服务就绪。
 
+## 9.1 UI 恢复检查（client 插件）
+
+浏览器半体的 UI 不出现，通常不是单点问题，按下面顺序排查：
+
+1. **是否进入运行中的 client graph**：`dshpd_ui_check` 的 `runtime.inGraph`；为 false 时检查 Loader row 是否裸包名、`dsh.client`、`exports["./client"]`、`lib/client.js` 是否存在，然后重启/刷新。
+2. **构建是否过期**：`CLIENT_BUILD_STALE` 表示 `src/client` 比 `lib/client.js` 新；必须重新构建，否则页面永远加载旧 bundle。
+3. **bundle 是否可执行**：factory-form、`exports.apply`、`exports.inject`；缺 apply 会注册空模块。
+4. **UI 座位是否还叫这个名字**：`CLIENT_NO_UI_SLOT` 表示没有注册已知座位；旧版 `styles.insert` 已移除（`CLIENT_STYLES_SERVICE`）。
+5. **client 与 Host 的路由是否对得上**：`CLIENT_ROUTE_MISSING` 会让 fetch 落到 SPA fallback，表现为 `Unexpected token "<"` 或空白页；`WEBSERVER_NOT_INJECTED` 会让路由根本没注册。
+6. **是否用了 React 却没有 require/import**：`CLIENT_REACT_MISSING`，apply 时直接抛错。
+
+修复顺序：改源码 → 重新构建 → 刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → `dshpd_verify`。
+
 ## 10. 规则集映射
 
 | Rule ID | 严重度 | 维度 | 修复 |
@@ -159,6 +172,16 @@ dsh plugin --profile web add ./my-plugin
 | `CLIENT_EXTERNAL_SELF` | HIGH | client | 移除自身包名 |
 | `CLIENT_EXTERNAL_BASELINE` | INFO | client | 移除多余基线模块 |
 | `CLIENT_EXTERNAL_UNLISTED` | MEDIUM | client | 加 `dsh.client.external` 或改 service |
+| `CLIENT_BUILD_STALE` | HIGH | client | 重新构建 `lib/client.js` 后刷新 |
+| `CLIENT_BUNDLE_NO_APPLY` | HIGH | client | 构建出口补 `exports.apply` |
+| `CLIENT_BUNDLE_NO_INJECT` | MEDIUM | client | 补 `exports.inject` |
+| `CLIENT_NO_UI_SLOT` | INFO | client | 检查 slot 名称 / 是否本应有 UI |
+| `CLIENT_LEGACY_SLOT` | MEDIUM | client | 改用 `settings.section` / `settings.plugins.tab` / `plugins.item` |
+| `CLIENT_REACT_MISSING` | HIGH | client | `require("react")` / `import React` |
+| `CLIENT_STYLES_SERVICE` | HIGH | client | 改插件自有 `<style>` 或内联 style |
+| `CLIENT_ROUTE_MISSING` | HIGH | client | 补 Host `webServer.register({ path })` |
+| `WEBSERVER_NOT_INJECTED` | HIGH | lifecycle | `inject` 或 `ctx.inject(['webServer'], ...)` |
+| `HOST_FS_HARD_INJECT` | MEDIUM | lifecycle | 改 `exec.agent.ctx.get('fs')` |
 | `PKG_ICON_FORMAT` / `PKG_ICON_TOO_LARGE` | MEDIUM | install | 换 SVG/PNG/JPEG/WebP，压到 ≤256 KiB |
 | `PKG_NO_TYPE_MODULE` | HIGH | manifest | 加 `"type": "module"` 或改 CJS |
 | `PKG_FILES_BUNDLE_PATCH` / `PKG_FILES_CLIENT_BUNDLE` / `PKG_FILES_ICON` | MEDIUM/LOW | install | 把产物加入 `package.json.files` |

@@ -14,6 +14,17 @@
 - 根目录与包内的 `deepseek-harness-product-technical-framework.md`、`DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md` 同步到 0.2.1-rc.2；SDK 规范升到 1.2.1（新增 §48）。
 - 版本号 `1.2.0` → `1.2.1`。
 
+### Added (UI restoration)
+
+- `dshpd_ui_check`：查询运行中的 `clientModules.graph()`，返回 `inGraph` / `rev` / `clientPath` / `bundleExists`，并汇总静态 UI 问题。
+- `CLIENT_BUILD_STALE`：`src/client` 比 `lib/client.js` 新（页面加载旧 UI）→ 必须重新构建。
+- `CLIENT_BUNDLE_NO_APPLY` / `CLIENT_BUNDLE_NO_INJECT`。
+- `CLIENT_NO_UI_SLOT` / `CLIENT_LEGACY_SLOT`（旧版设置卡片 slot 名称）。
+- `CLIENT_REACT_MISSING` / `CLIENT_STYLES_SERVICE`（已移除的 `styles.insert`）。
+- `CLIENT_ROUTE_MISSING`：client `fetch` 的本地路由在 Host 源码中找不到。
+- `WEBSERVER_NOT_INJECTED` / `HOST_FS_HARD_INJECT`。
+- `dshpd_analyze`、`dshpd_verify`、`/analyze` 结果增加运行时 `ui` 状态；`dshpd_design` 增加 UI 恢复清单；`dshpd_apply` 修改 client 源码时返回 `rebuildRequired`。
+
 ### Added (rules)
 
 - `HOST_EXPORT_MISSING`：声明 client 但没有 `exports["."]` / `main`。

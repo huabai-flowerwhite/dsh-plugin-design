@@ -5,7 +5,7 @@
 # 手工合并进 profile 的 cordis.patch.yml。
 #
 # 挂载效果：
-#   - Host 半体（12 个 dshpd_* 工具）→ 全局工具
+#   - Host 半体（13 个 dshpd_* 工具）→ 全局工具
 #   - Client 半体（settings.section 设置页）→ 全局 UI（dsh-client-modules 扫描 dsh.client）
 #
 # 前置：本包必须可被 node_modules 解析（官方 `dsh plugin add`，或

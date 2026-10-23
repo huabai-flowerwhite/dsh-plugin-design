@@ -44,7 +44,7 @@ dsh-plugin-design/
 ├── scripts/build-client.mjs   # src/client.js → lib/client.js，支持 --check
 └── src/
     ├── index.js               # Host 入口 → host.js
-    ├── host.js                # 12 个工具 + 持久化状态 + 设置页只读路由
+    ├── host.js                # 13 个工具 + 持久化状态 + 设置页只读路由
     ├── rules.js               # 纯规则引擎（无 I/O）
     └── client.js              # Client 半体源码
 ```
@@ -64,7 +64,7 @@ dsh-plugin-design/
 按「普通用户先看懂，技术细节按需展开」组织：
 
 1. **主视图**：一句话定位 → 能帮你做什么（检查 / 出方案 / 动手）→ 聊天框 3 步（明确 `design.md` 后可以继续修改 / 规范 / 开发）→ 设置页三个按钮 → 扫描与分析列表。
-2. **技术信息（折叠）**：规则集与兼容范围、12 个工具分组、安装/升级命令、安全边界、非官方认证声明。
+2. **技术信息（折叠）**：规则集与兼容范围、13 个工具分组、安装/升级命令、安全边界、非官方认证声明。
 3. **文案原则**：先说结果（“帮你检查并改好插件”），再说步骤（3 步 + 示例提示词），最后才出现 `engines.dsh`、factory bundle 等术语；不在首屏堆技术名词。
 
 ## 规则引擎（src/rules.js）
@@ -74,6 +74,7 @@ dsh-plugin-design/
 - 官方契约：`engines.dsh`（含 `workspace:` 拒绝、运行时版本满足性）、`dsh.manifestVersion`、`dsh.bundle.patch`（字符串/数组、越界、缺失、npm files 覆盖）、`dsh.client`（platform / `exports["./client"]` / bundle 存在性 / factory 形态 / 注册 id / `inject`/`external`/`immediately` 类型 / 自引用 / 基线模块）、Host 入口、`exports["./package.json"]`、子路径 `package.json`、图标格式与 256 KiB 上限、`type: module`、npm `files` 完整性。
 - 0.2.0 移除项：`@deepseek-ai/dsh-invariants` / `<pkg>/invariant` 依赖与 import、patch 中的 invariant 行。
 - 源码：globalThis/window/prototype patch、类型断言绕过、模块级 session 状态、危险命令、命令注入、硬编码密钥、eval/new Function、定时器未清理、工具缺 `output`、waterfall 缺 `next()`。
+- UI：`CLIENT_BUILD_STALE`（源码比 bundle 新）、`CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT`、`CLIENT_NO_UI_SLOT`、`CLIENT_REACT_MISSING`、`CLIENT_STYLES_SERVICE`、`CLIENT_ROUTE_MISSING`（client fetch 无 Host 路由）、`WEBSERVER_NOT_INJECTED`、`HOST_FS_HARD_INJECT`；`dshpd_ui_check` 还会查询运行中的 `clientModules.graph()` 判断 `inGraph` / `rev` / `clientPath`。
 - 结论：`BLOCKED`（任意 BLOCKER）/ `NEEDS_REVIEW`（任意 CRITICAL）/ `READY_TO_MODIFY`；维度分从 100 扣严重度权重。
 - 迁移项：`manifest-version`、`engines-dsh`、`bundle-patch`、`client-meta`、`remove-invariants-dep`，由 `dshpd_migrate` 执行（只改 package.json）。
 
@@ -102,8 +103,8 @@ dsh-plugin-design/
 
 ## 验证计划
 
-- **静态**：`npm test`（25 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、12 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
-- **运行时**：重启 dsh 后确认 12 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、设置页扫描/分析返回 JSON。
+- **静态**：`npm test`（27 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、13 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
+- **运行时**：重启 dsh 后确认 13 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、`dshpd_ui_check` 能读到 `clientModules.graph()`、设置页扫描/分析返回 JSON。
 - **生命周期**：插件卸载后工具、路由、slot 全部消失（由 `ctx` 注册与 `ctx.effect` 保证）。
 - 完整的 DH-TP-SDK 认证矩阵（§26–§34）需在 dsh 运行时内由 `dshpd_analyze` + 人工验证完成，属启发式 + 手动范畴。
 
@@ -117,3 +118,4 @@ dsh-plugin-design/
 6. 设置页只读路由使用 node:fs（用户主动选择目录），不经过 workspace 沙箱。
 7. SemVer 检查支持 `^ ~ > >= < <= =`、通配符、部分版本、`||`；不支持 hyphen range 与 `!=`。
 8. npm `files` 覆盖检查是目录前缀启发式；ESM 检测是 `.js/.mjs` 源码的 `import/export` 语法扫描，不做 npm pack 模拟。
+9. UI 构建过期基于 mtime；重新检出可能重置 mtime，以 `dshpd_ui_check` 的 `runtime.inGraph` / `buildStale` 为准。`CLIENT_ROUTE_MISSING` 只识别字面量 `fetch('/x')` 与 `path: '/x'`。

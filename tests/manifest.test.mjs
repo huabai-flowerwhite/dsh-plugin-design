@@ -22,7 +22,7 @@ function read(relativePath) {
 }
 
 const TOOL_NAMES = [
-  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_design',
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design',
   'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
   'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
 ]

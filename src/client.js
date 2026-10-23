@@ -17,7 +17,7 @@ const VERSION = '__DSHPD_VERSION__'
 const HARNESS_RANGE = '__DSHPD_HARNESS__'
 const RULESET = '0.2.1'
 const TOOL_NAMES = [
-  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_design',
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design',
   'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
   'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
 ]
@@ -227,6 +227,17 @@ function PluginRow(props) {
               'issues ' + analysis.issueCount + ' · B' + analysis.counts.BLOCKER + ' / C' + analysis.counts.CRITICAL + ' / H' + analysis.counts.HIGH + ' / M' + analysis.counts.MEDIUM +
               (analysis.migrations && analysis.migrations.length > 0 ? ' · 可自动迁移 ' + analysis.migrations.length + ' 项' : '')),
           ]),
+          analysis.ui && analysis.ui.available
+            ? h('div', { style: { fontSize: 11, marginTop: 2 } }, [
+                h('span', { style: badgeStyle(analysis.ui.inGraph ? 'ok' : 'warn') }, '运行时 UI'),
+                h('span', { style: { opacity: 0.8 } }, analysis.ui.inGraph
+                  ? '已注册 ' + (analysis.ui.rev || '')
+                  : '未注册（页面不会出现该 UI）'),
+                analysis.official && analysis.official.client && analysis.official.client.buildStale
+                  ? h('span', { style: { marginLeft: 6, color: COLORS.warn } }, '· client bundle 已过期，需要重新构建')
+                  : null,
+              ])
+            : null,
           h(FindingList, { issues: analysis.issues, truncated: analysis.issuesTruncated === true }),
         ])
       : null,
@@ -399,7 +410,7 @@ function Panel(props) {
       h('h4', { style: h4Style() }, '技术信息'),
       h('div', { style: { fontSize: 12, opacity: 0.8 } }, '规则集 ' + RULESET + ' · 兼容 Harness ' + HARNESS_RANGE),
       h('div', { style: { fontSize: 12, lineHeight: 1.9, marginTop: 6 } }, [
-        h('div', { key: 'a' }, [h('b', null, '分析：'), 'dshpd_discover · dshpd_inspect · dshpd_analyze · dshpd_design']),
+        h('div', { key: 'a' }, [h('b', null, '分析：'), 'dshpd_discover · dshpd_inspect · dshpd_analyze · dshpd_ui_check · dshpd_design']),
         h('div', { key: 'e' }, [h('b', null, '执行：'), 'dshpd_approve · dshpd_backup · dshpd_apply · dshpd_migrate · dshpd_verify']),
         h('div', { key: 'r' }, [h('b', null, '恢复与报告：'), 'dshpd_rollback · dshpd_status · dshpd_report']),
       ]),

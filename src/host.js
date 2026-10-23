@@ -35,7 +35,7 @@ const MAX_BODY_BYTES = 1024 * 1024
 const MAX_SCAN_RESULTS = 500
 
 const TOOL_NAMES = [
-  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_design',
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design',
   'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
   'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
 ]
@@ -219,7 +219,11 @@ function createNodeIo() {
     async stat(target) {
       try {
         const info = statSync(target)
-        return { type: info.isDirectory() ? 'directory' : info.isFile() ? 'file' : 'other', size: info.size }
+        return {
+          type: info.isDirectory() ? 'directory' : info.isFile() ? 'file' : 'other',
+          size: info.size,
+          mtimeMs: info.mtimeMs,
+        }
       } catch (error) {
         return undefined
       }
@@ -254,6 +258,20 @@ async function collectSources(io, root) {
   }
   await walk(root, 0)
   return files
+}
+
+async function mtimeOf(io, target) {
+  try {
+    const info = await io.stat(target)
+    if (info && typeof info.mtimeMs === 'number') return info.mtimeMs
+  } catch (error) {
+    // fall through to the local filesystem probe
+  }
+  try {
+    return statSync(target).mtimeMs
+  } catch (error) {
+    return undefined
+  }
 }
 
 async function collectModel(io, pluginPath, harnessVersion) {
@@ -294,8 +312,9 @@ async function collectModel(io, pluginPath, harnessVersion) {
   const exportsField = isPlainObject(pkg) && isPlainObject(pkg.exports) ? pkg.exports : null
   const clientTarget = exportTarget(exportsField, './client')
   const clientBundlePath = clientTarget === null ? null : pathInside(base, clientTarget)
+  const defaultClientBundlePath = pathJoin(base, 'lib', 'client.js')
   const clientBundleRaw = clientBundlePath === null ? null : await io.readText(clientBundlePath, MAX_SOURCE_BYTES)
-  const defaultClientBundleRaw = await io.readText(pathJoin(base, 'lib', 'client.js'), MAX_SOURCE_BYTES)
+  const defaultClientBundleRaw = await io.readText(defaultClientBundlePath, MAX_SOURCE_BYTES)
 
   let iconExists
   let iconBytes
@@ -316,8 +335,18 @@ async function collectModel(io, pluginPath, harnessVersion) {
   const sourceFiles = await collectSources(io, base)
   const clientSourceFiles = sourceFiles.filter((file) => {
     const normalized = file.path.split('\\').join('/')
-    return /(^|\/)src\/client\//.test(normalized) || /(^|\/)client\//.test(normalized) || /(^|\/)client\.[a-z0-9-]+\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(normalized)
+    return /(^|\/)src\/client\//.test(normalized)
+      || /(^|\/)client\//.test(normalized)
+      || /(^|\/)client\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(normalized)
   })
+  let clientSourceMtimeMax
+  for (const file of clientSourceFiles) {
+    const modified = await mtimeOf(io, file.path)
+    if (typeof modified === 'number' && (clientSourceMtimeMax === undefined || modified > clientSourceMtimeMax)) {
+      clientSourceMtimeMax = modified
+    }
+  }
+  const clientBundleMtime = await mtimeOf(io, clientBundlePath === null ? defaultClientBundlePath : clientBundlePath)
   const hasTests = topLevel.some((entry) => entry.type === 'directory' && /^(?:tests?|__tests__)$/.test(entry.name))
     || (isPlainObject(pkg) && isPlainObject(pkg.scripts) && typeof pkg.scripts.test === 'string')
   const names = new Set(topLevel.map((entry) => entry.name.toLowerCase()))
@@ -335,8 +364,12 @@ async function collectModel(io, pluginPath, harnessVersion) {
     bundlePatches,
     clientBundleExists: clientBundleRaw !== null,
     clientBundleRaw,
+    clientBundlePath,
     defaultClientBundleExists: defaultClientBundleRaw !== null,
+    defaultClientBundlePath,
     clientSourceFiles,
+    clientSourceMtimeMax,
+    clientBundleMtime,
     iconExists,
     iconBytes,
     iconExt,
@@ -638,6 +671,57 @@ export default {
       return (task.files || []).find((record) => samePath(record.path, filePath) || samePath(record.resolved, filePath))
     }
 
+    // ---- runtime client-module status -----------------------------------
+    // Answers the question static analysis cannot: is this package's browser
+    // half actually in the running client graph, and will the page load it?
+    function uiStatus(packageName) {
+      if (typeof packageName !== 'string' || packageName.trim() === '') {
+        return { available: false, reason: 'package name unknown' }
+      }
+      const clientModules = typeof ctx.get === 'function' ? ctx.get('clientModules') : undefined
+      if (!clientModules) {
+        return { available: false, reason: 'clientModules service is not visible from this context' }
+      }
+      let graph = null
+      try {
+        graph = typeof clientModules.graph === 'function' ? clientModules.graph() : null
+      } catch (error) {
+        return { available: false, reason: messageOf(error) }
+      }
+      const entry = graph && Array.isArray(graph.entries)
+        ? graph.entries.find((item) => item && item.id === packageName) || null
+        : null
+      let record = null
+      try {
+        if (clientModules.table && typeof clientModules.table.get === 'function') record = clientModules.table.get(packageName)
+      } catch (error) {
+        record = null
+      }
+      let clientPath = null
+      try {
+        clientPath = typeof clientModules.clientPath === 'function' ? clientModules.clientPath(packageName) : null
+      } catch (error) {
+        clientPath = null
+      }
+      if (clientPath === null && record && record.meta) clientPath = record.meta.clientPath || null
+      let bundleExists = false
+      if (typeof clientPath === 'string') {
+        try { bundleExists = statSync(clientPath).isFile() } catch (error) { bundleExists = false }
+      }
+      return {
+        available: true,
+        packageName,
+        inGraph: entry !== null,
+        rev: entry && typeof entry.rev === 'string' ? entry.rev : null,
+        clientPath,
+        bundleExists,
+        inject: record && record.meta && Array.isArray(record.meta.inject) ? record.meta.inject : [],
+        external: record && record.meta && Array.isArray(record.meta.external) ? record.meta.external : [],
+        immediately: record && record.meta ? record.meta.immediately === true : false,
+        graphRev: graph && typeof graph.rev === 'string' ? graph.rev : null,
+      }
+    }
+
     // ---- tools ----------------------------------------------------------
 
     reg('dshpd_discover',
@@ -709,6 +793,7 @@ export default {
         return {
           pluginPath: model.pluginPath,
           pluginName: isPlainObject(model.pkg) ? model.pkg.name || null : null,
+          ui: isPlainObject(model.pkg) && typeof model.pkg.name === 'string' ? uiStatus(model.pkg.name) : null,
           ruleset: RULESET,
           runtimeVersion: harnessVersion,
           official: result.official,
@@ -729,6 +814,48 @@ export default {
             '静态扫描为启发式规则，非权威认证',
           ],
           note: 'heuristic static scan; not authoritative, not a DeepSeek official certification.',
+        }
+      },
+      { concurrencySafe: true })
+
+    reg('dshpd_ui_check',
+      'Check whether a plugin browser half is actually registered in the RUNNING client module graph, and combine that with static UI diagnostics: client bundle presence/freshness, factory apply/inject, known slot registrations, and client fetch routes missing from host source. Read-only; use this when a plugin had UI before a DSH upgrade but the Settings page or overlay no longer appears.',
+      {
+        pluginPath: { type: 'string', description: 'Absolute path to the plugin project directory (used to read package.json and run static checks).' },
+        packageName: { type: 'string', description: 'Optional package name when only the runtime graph entry matters.' },
+        harnessVersion: { type: 'string', description: 'Optional running DSH version for engines.dsh evaluation.' },
+      },
+      [],
+      async (args, exec) => {
+        let packageName = nonEmptyString(args.packageName)
+        let model = null
+        let result = null
+        if (nonEmptyString(args.pluginPath) !== null) {
+          const harnessVersion = nonEmptyString(args.harnessVersion) || nonEmptyString(process.env.DSH_VERSION)
+          const scanned = await analyzePath(ioFor(exec), args.pluginPath, harnessVersion)
+          model = scanned.model
+          result = scanned.result
+          if (packageName === null && isPlainObject(model.pkg)) packageName = nonEmptyString(model.pkg.name)
+        }
+        if (packageName === null) return { error: 'packageName unknown: pass pluginPath or packageName' }
+        const runtime = uiStatus(packageName)
+        const uiIssues = result === null
+          ? []
+          : result.issues.filter((issue) => issue.category === 'client' || issue.id === 'WEBSERVER_NOT_INJECTED' || issue.id === 'HOST_FS_HARD_INJECT').slice(0, 50)
+        return {
+          packageName,
+          runtime,
+          clientDeclared: result === null ? null : result.official.client.declared,
+          buildStale: result === null ? null : result.official.client.buildStale,
+          applyPresent: result === null ? null : result.official.client.applyPresent,
+          injectPresent: result === null ? null : result.official.client.injectPresent,
+          uiSlots: result === null ? [] : result.official.client.uiSlots,
+          issues: uiIssues,
+          howToUse: [
+            'runtime.inGraph=false：检查 row 是否为裸包名、package.json.dsh.client、exports["./client"]、lib/client.js 是否存在，然后重启/刷新页面。',
+            'buildStale=true：先重新构建 client bundle（如 npm run build:client），再刷新页面；否则页面加载的仍是旧 UI。',
+            'issues 里的 CLIENT_ROUTE_MISSING / WEBSERVER_NOT_INJECTED 会让设置页 fetch 落到 SPA fallback，表现为 JSON 解析错误或页面空白。',
+          ],
         }
       },
       { concurrencySafe: true })
@@ -943,6 +1070,8 @@ export default {
         const after = await tryReadText(args.filePath, exec)
         const afterHash = after === null ? null : hashText(after)
         if (task.fileHashes && afterHash !== null) task.fileHashes.set(pathKey(args.filePath), afterHash)
+        const clientSourceEdited = /client/i.test(args.filePath.replace(/\\/g, '/'))
+          && /\.(?:js|ts|tsx|jsx|mjs|cjs)$/i.test(args.filePath)
         const entry = {
           version: 1,
           time: new Date().toISOString(),
@@ -956,6 +1085,7 @@ export default {
           bytesAfter: after === null ? null : Buffer.byteLength(after, 'utf8'),
           matches: occurrences,
           replaceAll: args.replaceAll === true,
+          rebuildRequired: clientSourceEdited,
         }
         await appendJournal(task.pluginPath, entry, exec)
         task.journal.push(entry)
@@ -966,6 +1096,10 @@ export default {
           matches: occurrences,
           before: outcome && outcome.before !== undefined ? shortText(outcome.before, 4000) : undefined,
           after: outcome && outcome.after !== undefined ? shortText(outcome.after, 4000) : undefined,
+          rebuildRequired: clientSourceEdited,
+          note: clientSourceEdited
+            ? '改的是 client 源码：必须重新构建 client bundle（如 npm run build:client），否则页面加载的仍是旧 UI；构建后再运行 dshpd_ui_check / dshpd_verify。'
+            : undefined,
           journalCount: task.journal.length,
         }
       })
@@ -1047,7 +1181,7 @@ export default {
       })
 
     reg('dshpd_verify',
-      'Verify a modification run: backup manifest integrity, package.json parsing, modified files (no conflict markers), client bundle factory shape, and whether analysis findings worsened versus the pre-modification snapshot. Read-only checks; appends a verify entry to the durable journal.',
+      'Verify a modification run: backup manifest integrity, package.json parsing, modified files (no conflict markers), client bundle factory shape, client build freshness / apply-inject exports / known UI slots / runtime client-graph registration, and whether analysis findings worsened versus the pre-modification snapshot. Read-only checks; appends a verify entry to the durable journal.',
       {
         pluginPath: { type: 'string', description: 'Absolute path to the plugin project directory.' },
         backupId: { type: 'string', description: 'Optional backupId; defaults to the latest backup on disk.' },
@@ -1105,12 +1239,37 @@ export default {
         }
 
         const official = scanned.result.official
+        const ui = isPlainObject(scanned.model.pkg) && typeof scanned.model.pkg.name === 'string'
+          ? uiStatus(scanned.model.pkg.name)
+          : null
         if (official.client.declared) {
           checks.push({
             id: 'CLIENT_BUNDLE',
             status: official.client.bundlePresent && official.client.factoryForm ? 'PASS' : 'FAIL',
             detail: 'present=' + official.client.bundlePresent + ' factoryForm=' + official.client.factoryForm,
           })
+          checks.push({
+            id: 'CLIENT_BUILD_FRESH',
+            status: official.client.buildStale ? 'FAIL' : 'PASS',
+            detail: official.client.buildStale ? 'client 源码比 bundle 新：必须重新构建' : 'bundle 不早于 client 源码',
+          })
+          checks.push({
+            id: 'CLIENT_BUNDLE_EXPORTS',
+            status: official.client.applyPresent ? 'PASS' : 'FAIL',
+            detail: 'apply=' + official.client.applyPresent + ' inject=' + official.client.injectPresent,
+          })
+          checks.push({
+            id: 'CLIENT_UI_SLOT',
+            status: official.client.uiSlots.length > 0 ? 'PASS' : 'WARN',
+            detail: official.client.uiSlots.length > 0 ? official.client.uiSlots.join(', ') : '未找到已知 UI 座位',
+          })
+          if (ui !== null && ui.available === true) {
+            checks.push({
+              id: 'CLIENT_GRAPH',
+              status: ui.inGraph ? 'PASS' : 'WARN',
+              detail: ui.inGraph ? '已注册，rev=' + String(ui.rev) : '运行中的 client graph 没有该包：UI 不会出现（可能未挂载/未重启/包名不一致）',
+            })
+          }
         }
 
         const journal = await readJournal(base, 500, exec)
@@ -1149,7 +1308,7 @@ export default {
         } catch (error) {
           journalWarning = messageOf(error)
         }
-        return { ok, pluginPath: base, backupId, checks, analysis: summary, official: scanned.result.official, journalWarning }
+        return { ok, pluginPath: base, backupId, checks, analysis: summary, official: scanned.result.official, ui, journalWarning }
       },
       { concurrencySafe: false })
 
@@ -1342,6 +1501,7 @@ export default {
             sendJson(res, 200, {
               ok: true,
               pluginPath: model.pluginPath,
+              ui: isPlainObject(model.pkg) && typeof model.pkg.name === 'string' ? uiStatus(model.pkg.name) : null,
               ruleset: RULESET,
               official: result.official,
               issueCount: result.issues.length,
@@ -1415,11 +1575,25 @@ function buildDesignTemplate(pluginPath, result) {
     for (const migration of migrations) lines.push('- `' + migration.id + '` — ' + migration.title)
   }
   lines.push('')
-  lines.push('## 6. Verification')
+  let sectionNumber = 6
+  if (official.client.declared) {
+    lines.push('## ' + sectionNumber + '. UI 恢复与验证（client 插件必做）')
+    sectionNumber += 1
+    lines.push('')
+    lines.push('- Client 入口：`' + String(official.client.exportTarget) + '`；检测到的 UI 座位：' + (official.client.uiSlots.length > 0 ? official.client.uiSlots.join(', ') : '（未检测到已知座位）'))
+    lines.push('- 如果 `dshpd_analyze` 报了 `CLIENT_BUILD_STALE`：先重新构建 client bundle，再刷新页面；否则源码改了、页面仍是旧 UI。')
+    lines.push('- 步骤：修改 client 源码 → 确认仍导出 `apply` / `inject` → 运行项目构建命令（如 `npm run build:client`）→ 确认 `lib/client.js` 是 factory-form 且 mtime 晚于源码 → 备份源码与 bundle → 刷新页面。')
+    lines.push('- 验证：调用 `dshpd_ui_check`（或 `dshpd_verify`），要求 `runtime.inGraph = true`、`buildStale = false`、`applyPresent = true`；再打开设置页确认入口出现。')
+    lines.push('- 若 `runtime.inGraph = false`：检查 Loader row 是否为裸包名、`package.json.dsh.client`、`exports["./client"]`、`lib/client.js` 是否存在，然后重启 dsh / 刷新页面。')
+    lines.push('- 若设置页请求报 `Unexpected token "<"`：检查 client 的 fetch 路径与 Host `webServer.register({ path })` 是否一致（`CLIENT_ROUTE_MISSING`），以及是否用 `ctx.inject(["webServer"], ...)` 等待服务。')
+    lines.push('')
+  }
+  lines.push('## ' + sectionNumber + '. Verification')
   lines.push('')
-  lines.push('（typecheck / lint / unit / integration / lifecycle / session / concurrency / security / compatibility；无则 NOT_AVAILABLE。修改完成后调用 `dshpd_verify`，再人工运行测试并记录 PASS/FAIL/NOT_AVAILABLE。）')
+  lines.push('（typecheck / lint / unit / integration / lifecycle / session / concurrency / security / compatibility；无则 NOT_AVAILABLE。修改完成后调用 `dshpd_verify`，client 插件再调用 `dshpd_ui_check`，并人工运行测试记录 PASS/FAIL/NOT_AVAILABLE。）')
   lines.push('')
-  lines.push('## 7. Approval')
+  sectionNumber += 1
+  lines.push('## ' + sectionNumber + '. Approval')
   lines.push('')
   lines.push('（用户确认后才执行修改；未确认前严禁修改目标插件源码。审批通过后依次调用 dshpd_approve → dshpd_backup → dshpd_apply/dshpd_migrate → dshpd_verify。）')
   lines.push('')

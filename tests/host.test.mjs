@@ -66,6 +66,28 @@ function createHarness() {
   const routes = []
   const fsService = createFs()
   const sandboxPolicy = { resolve() { return undefined }, workspaceRoot: undefined }
+  const clientModules = {
+    graph() {
+      return {
+        rev: 'test-rev',
+        entries: [{ id: 'modern-plugin', rev: 'bundle-rev' }],
+      }
+    },
+    table: new Map([
+      ['modern-plugin', {
+        meta: {
+          clientPath: join(FIXTURES, 'modern-plugin', 'lib', 'client.js'),
+          inject: ['slots'],
+          external: [],
+          immediately: false,
+        },
+      }],
+    ]),
+    clientPath(name) {
+      const record = this.table.get(name)
+      return record === undefined ? undefined : record.meta.clientPath
+    },
+  }
   const ctx = {
     tools: {
       register(definition) {
@@ -77,6 +99,7 @@ function createHarness() {
     get(name) {
       if (name === 'fs') return fsService
       if (name === 'sandboxPolicy') return sandboxPolicy
+      if (name === 'clientModules') return clientModules
       return undefined
     },
     effect(callback) { return callback() },
@@ -142,13 +165,13 @@ function makeRouteResponse() {
   }
 }
 
-test('registers exactly 12 tools and 3 settings routes', () => {
+test('registers exactly 13 tools and 3 settings routes', () => {
   const harness = createHarness()
-  assert.equal(harness.tools.size, 12)
+  assert.equal(harness.tools.size, 13)
   assert.deepEqual([...harness.tools.keys()].sort(), [
     'dshpd_analyze', 'dshpd_apply', 'dshpd_approve', 'dshpd_backup',
     'dshpd_design', 'dshpd_discover', 'dshpd_inspect', 'dshpd_migrate',
-    'dshpd_report', 'dshpd_rollback', 'dshpd_status', 'dshpd_verify',
+    'dshpd_report', 'dshpd_rollback', 'dshpd_status', 'dshpd_ui_check', 'dshpd_verify',
   ])
   assert.deepEqual(harness.routes.map((route) => route.path).sort(), [
     '/dsh-plugin-design/analyze', '/dsh-plugin-design/discover', '/dsh-plugin-design/info',
@@ -298,7 +321,7 @@ test('manifest migrations upgrade a bare package.json', async () => {
   mkdirSync(join(work, 'tests'), { recursive: true })
   writeFileSync(join(work, 'package.json'), JSON.stringify({ name: 'migrate-me', version: '0.1.0', main: 'index.js' }, null, 2) + '\n')
   writeFileSync(join(work, 'cordis.patch.yml'), "- insert:\n    - id: migrate-me\n      name: 'migrate-me'\n")
-  writeFileSync(join(work, 'lib', 'client.js'), 'window.__ModuleLoader__.load({ id: "migrate-me", factory: (require) => { return {}; } });\n')
+  writeFileSync(join(work, 'lib', 'client.js'), 'window.__ModuleLoader__.load({ id: "migrate-me", factory: (require) => { var module = { exports: {} }; function apply() {} module.exports.apply = apply; module.exports.inject = ["slots"]; module.exports.slots = ["settings.section"]; return module.exports; } });\n')
   writeFileSync(join(work, 'README.md'), '# migrate-me\n')
   writeFileSync(join(work, 'LICENSE'), 'MIT\n')
   writeFileSync(join(work, 'tests', 'smoke.test.js'), '// smoke\n')
@@ -327,6 +350,18 @@ test('manifest migrations upgrade a bare package.json', async () => {
   assert.equal(verify.ok, true)
 })
 
+test('ui_check combines runtime client graph with static UI diagnostics', async () => {
+  const harness = createHarness()
+  const result = await call(harness, 'dshpd_ui_check', { pluginPath: join(FIXTURES, 'modern-plugin') })
+  assert.equal(result.packageName, 'modern-plugin')
+  assert.equal(result.runtime.available, true)
+  assert.equal(result.runtime.inGraph, true)
+  assert.equal(result.runtime.rev, 'bundle-rev')
+  assert.equal(result.buildStale, false)
+  assert.equal(result.applyPresent, true)
+  assert.ok(result.uiSlots.includes('settings.section'))
+})
+
 test('settings routes answer info/analyze/discover over the wire contract', async () => {
   const harness = createHarness()
   const byPath = new Map(harness.routes.map((route) => [route.path, route]))
@@ -336,7 +371,7 @@ test('settings routes answer info/analyze/discover over the wire contract', asyn
   assert.equal(info.statusCode, 200)
   const infoJson = JSON.parse(info.body)
   assert.equal(infoJson.version, '1.2.1')
-  assert.equal(infoJson.tools.length, 12)
+  assert.equal(infoJson.tools.length, 13)
 
   const analyze = makeRouteResponse()
   await byPath.get('/dsh-plugin-design/analyze').handler(

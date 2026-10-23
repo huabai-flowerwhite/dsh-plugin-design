@@ -53,7 +53,7 @@ bash install.sh
 
 > **桌面端**使用 `desktop` profile（由 Electron 托管，`dsh plugin --profile desktop` 会被拒绝）。要在桌面端使用，安装时加 `-Profile desktop`（Windows）或 `--profile desktop`（Linux/macOS），走 link 模式。
 
-安装完重启 dsh（或让 HMR 重载）并刷新页面，就能在聊天框看到 12 个 `dshpd_*` 工具，并在「设置 → dsh plugin design」看到设置页。
+安装完重启 dsh（或让 HMR 重载）并刷新页面，就能在聊天框看到 13 个 `dshpd_*` 工具，并在「设置 → dsh plugin design」看到设置页。
 
 > 运行中新增挂载时，Host 半体可能立即生效；Client 半体需要刷新页面（Ctrl+R / Cmd+R）或重启应用，设置页才会出现在导航里。
 
@@ -113,6 +113,29 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 设置页的扫描和分析都是只读的，不会修改文件；真正的修改只发生在聊天框第 3 步。
 
+## UI 恢复（client 插件重点）
+
+如果插件原来有设置页 / 悬浮层 / 背景，但 DSH 升级后不见了，先运行：
+
+```text
+使用 dsh plugin design 检查 <插件路径> 的 UI，告诉我为什么没显示、要怎么修。
+```
+
+对应工具是 `dshpd_ui_check`，它会同时看**源码/构建产物**和**当前运行中的 client graph**：
+
+| 检查结果 | 含义 | 处理 |
+|---|---|---|
+| `runtime.inGraph = false` | 页面根本没有注册这个 client 半体 | 检查 Loader row 是否为裸包名、`dsh.client`、`exports["./client"]`，然后重启/刷新 |
+| `buildStale = true` | `src/client` 比 `lib/client.js` 新，页面加载的还是旧 UI | 重新构建 client bundle（如 `npm run build:client`）后刷新 |
+| `CLIENT_ROUTE_MISSING` | client fetch 的本地路由在 Host 源码里找不到，请求落到 SPA 的 HTML | 补 `webServer.register({ path })`，或修正 fetch 路径 |
+| `WEBSERVER_NOT_INJECTED` | 用了 `ctx.webServer` 但没有等待 `webServer` 服务 | 加 `inject` 或用 `ctx.inject(['webServer'], ...)` |
+| `CLIENT_STYLES_SERVICE` | 使用了已移除的 `styles.insert` | 改为插件自己创建 `<style>` 或内联 style |
+| `CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT` | factory 模块没有导出 `apply` / `inject` | 修构建出口 |
+| `CLIENT_NO_UI_SLOT` | 没有注册任何已知 UI 座位 | 检查是否用了已移除的 slot 名称 |
+| `CLIENT_LEGACY_SLOT` | 用了旧版 `settings.plugin.item` 等 slot | 改用 `settings.section` / `settings.plugins.tab` / `plugins.item` |
+
+> UI 修复的正确顺序：改 client 源码 → **重新构建** `lib/client.js` → 刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → 再跑 `dshpd_verify`。
+
 ## 工作流程（原理）
 
 ```text
@@ -126,14 +149,15 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 安全边界：分析先于修改、设计先于执行；未确认不修改；修改前备份、失败可回滚、改后可校验；不修改 Core、不使用 private API。
 
-## 工具清单（12 个）
+## 工具清单（13 个）
 
 | 阶段 | 工具 | 作用 |
 |---|---|---|
 | 分析 | `dshpd_discover` | 递归发现插件项目，报告 bundle / client / engines.dsh 角色 |
 | 分析 | `dshpd_inspect` | 读取单个插件的清单、patch、client、目录与源码清单（只读） |
 | 分析 | `dshpd_analyze` | 规则集 `0.2.1` 启发式扫描，输出问题、官方契约快照、可执行迁移、评分与结论 |
-| 分析 | `dshpd_design` | 生成 `design.md`（含契约快照、问题、迁移项、修改计划骨架） |
+| 分析 | `dshpd_ui_check` | 检查 UI 是否真的注册进运行中的 client graph，并报告构建过期、apply/inject、UI 座位与缺失路由 |
+| 分析 | `dshpd_design` | 生成 `design.md`（含契约快照、问题、迁移项、修改计划与 UI 恢复清单） |
 | 执行 | `dshpd_approve` | 你确认后开启审批门，签发 approvalToken |
 | 执行 | `dshpd_backup` | 快照待改文件（含 hash 与分析摘要，持久化） |
 | 执行 | `dshpd_apply` | 单文件字面量替换；三重校验 + 写前 hash 校验 + `dryRun` |
@@ -155,6 +179,7 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 - 设置页文案重写：先讲“能帮你做什么”，再给 **3 步聊天框用法**；明确 **产出 `design.md` 后可以继续修改 / 规范 / 开发插件**。
 - README 重排为「安装 → 使用 → 原理 → 技术信息」，并补充设置页三个按钮的说明。
 - 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
+- **UI 恢复能力**：新增 `dshpd_ui_check`，检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_design` 增加 UI 恢复清单，`dshpd_apply` 改 client 源码时提示重新构建。
 - 版本号 `1.2.0` → `1.2.1`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
 
 <details>
@@ -186,10 +211,10 @@ dsh-plugin-design/
 ├── scripts/build-client.mjs    # src/client.js → lib/client.js（含 --check）
 ├── src/
 │   ├── index.js                # Host 入口 → host.js
-│   ├── host.js                 # 12 个工具、持久化备份/journal、设置页只读路由
+│   ├── host.js                 # 13 个工具、持久化备份/journal、设置页只读路由
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 25 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
+└── tests/                      # 27 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
 ```
 
 ## 测试
@@ -200,7 +225,7 @@ npm run build:client    # 重新生成 lib/client.js
 npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 ```
 
-覆盖：包清单/图标/导出、DH-TP-SDK 清单、bundle patch、源码安全、SemVer、三类插件样本、12 工具与 3 条路由、审批→备份→修改→校验→报告→回滚全流程、清单迁移、client 构建防漂移。详见 `tests/README.md`。
+覆盖：包清单/图标/导出、DH-TP-SDK 清单、bundle patch、源码安全、SemVer、三类插件样本、13 工具与 3 条路由、审批→备份→修改→校验→报告→回滚全流程、清单迁移、client 构建防漂移。详见 `tests/README.md`。
 
 ## 已知限制
 
@@ -212,6 +237,7 @@ npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 6. 设置页的 `/discover`、`/analyze` 使用 node:fs 只读扫描，仅用于用户主动选择的插件目录。
 7. 阶段 1 的读取与阶段 2 的写入都走 agent 平面 `fs` 与 `sandboxPolicy`：目标插件在会话 workspace 之外时，需要 danger-full-access，或把会话 cwd 设到插件父目录。
 8. npm `files` 覆盖检查是目录前缀启发式；ESM 检测是 `.js/.mjs` 源码的 `import/export` 语法扫描，不做 npm pack 模拟。
+9. UI 构建过期基于文件 mtime；从 npm/git 重新检出可能重置 mtime，需以 `dshpd_ui_check` 的运行时结果为准。`CLIENT_ROUTE_MISSING` 是字符串级启发式（只识别字面量 `fetch('/x')` 与 `path: '/x'`）。
 
 ## 更多文档
 
