@@ -169,6 +169,14 @@ function createFsIo(fsApi) {
         return false
       }
     },
+    async stat(target) {
+      try {
+        const resolved = await fsApi.resolve(target)
+        return await fsApi.stat(resolved)
+      } catch (error) {
+        return undefined
+      }
+    },
   }
 }
 
@@ -206,6 +214,14 @@ function createNodeIo() {
         return true
       } catch (error) {
         return false
+      }
+    },
+    async stat(target) {
+      try {
+        const info = statSync(target)
+        return { type: info.isDirectory() ? 'directory' : info.isFile() ? 'file' : 'other', size: info.size }
+      } catch (error) {
+        return undefined
       }
     },
   }
@@ -282,9 +298,19 @@ async function collectModel(io, pluginPath, harnessVersion) {
   const defaultClientBundleRaw = await io.readText(pathJoin(base, 'lib', 'client.js'), MAX_SOURCE_BYTES)
 
   let iconExists
+  let iconBytes
+  let iconExt = null
   if (isPlainObject(pkg) && typeof pkg.icon === 'string' && pkg.icon.trim() !== '') {
     const iconPath = pathInside(base, pkg.icon)
-    iconExists = iconPath === null ? false : await io.exists(iconPath)
+    if (iconPath !== null) {
+      const info = await io.stat(iconPath)
+      iconExists = info !== undefined
+      iconBytes = info && typeof info.size === 'number' ? info.size : undefined
+      const match = /\.([A-Za-z0-9]+)$/.exec(pkg.icon.trim())
+      iconExt = match === null ? null : match[1].toLowerCase()
+    } else {
+      iconExists = false
+    }
   }
 
   const sourceFiles = await collectSources(io, base)
@@ -312,6 +338,8 @@ async function collectModel(io, pluginPath, harnessVersion) {
     defaultClientBundleExists: defaultClientBundleRaw !== null,
     clientSourceFiles,
     iconExists,
+    iconBytes,
+    iconExt,
     sourceFiles,
     hasTests,
     hasReadme,

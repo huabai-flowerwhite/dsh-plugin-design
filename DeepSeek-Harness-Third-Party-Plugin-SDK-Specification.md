@@ -1,10 +1,12 @@
 # DeepSeek Harness 第三方插件开发 SDK / 规范
 
 **Document ID:** DH-TP-SDK  
-**Version:** 1.1.0  
+**Version:** 1.2.1  
 **Status:** 工程化第三方插件规范（非 DeepSeek 官方标准）  
-**对齐的 Harness 版本：** `@deepseek-ai/dsh` `0.1.1-rc.2`（Developer Preview）
+**对齐的 Harness 版本：** `@deepseek-ai/dsh` `0.2.1-rc.2`（Developer Preview）
 
+> 1.2.1 变更：新增 §48「官方契约对齐（0.2.x 增补）」——`package.json.dsh` / `engines.dsh` / bundle / client factory bundle / 服务平面 / 0.2.0 移除项；§47 保留 0.1.x 落地记录，冲突时以 §48 与官方契约为准。
+>
 > 1.1.0 变更：对齐 Harness `0.1.1-rc.2` 的真实版本号（原示例中的 `0.8.0`/`0.9.x` 为占位版本，已更正为 `0.1.x`）；新增 goal / subagent / agentTeams / workflow / compaction / settings card / conversation node 等能力 seam 的规范条目。
 
 ## 1. 目标

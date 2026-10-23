@@ -49,6 +49,9 @@
 | `engines.dsh` | SemVer 兼容范围 | 缺省时回退 `peerDependencies` 中的 `@deepseek-ai/dsh*`；两者都没有则兼容性不可验证 |
 | `icon` | 插件管理器展示图 | 显示通用图标 |
 | `description` | 插件管理器卡片摘要 | 只显示技术名 |
+| `files` | npm 发布白名单 | 漏掉 `cordis.patch.yml` / `lib/client.js` / `icon` 时，安装后的包缺少运行时或展示产物 |
+
+> 图标支持 SVG / PNG / JPEG / WebP，位于包目录内且 ≤256 KiB；源码使用 ESM 时 `package.json` 需要 `"type": "module"`。
 
 ## 3. 兼容性检查（0.2.1 起）
 
@@ -150,7 +153,16 @@ dsh plugin --profile web add ./my-plugin
 | `CLIENT_BUNDLE_FORMAT` | BLOCKER | client | 用 factory-form 构建 |
 | `CLIENT_BUNDLE_ID` | HIGH | client | 构建 id = 包名 |
 | `CLIENT_NOT_DECLARED` | HIGH | client | 声明 `dsh.client` |
+| `HOST_EXPORT_MISSING` | HIGH | manifest | 补 `exports["."]` 或 `main` |
+| `CLIENT_INJECT_INVALID` / `CLIENT_EXTERNAL_INVALID` | HIGH | client | 改成字符串数组 |
+| `CLIENT_IMMEDIATELY_INVALID` | MEDIUM | client | 改成布尔值 |
+| `CLIENT_EXTERNAL_SELF` | HIGH | client | 移除自身包名 |
+| `CLIENT_EXTERNAL_BASELINE` | INFO | client | 移除多余基线模块 |
 | `CLIENT_EXTERNAL_UNLISTED` | MEDIUM | client | 加 `dsh.client.external` 或改 service |
+| `PKG_ICON_FORMAT` / `PKG_ICON_TOO_LARGE` | MEDIUM | install | 换 SVG/PNG/JPEG/WebP，压到 ≤256 KiB |
+| `PKG_NO_TYPE_MODULE` | HIGH | manifest | 加 `"type": "module"` 或改 CJS |
+| `PKG_FILES_BUNDLE_PATCH` / `PKG_FILES_CLIENT_BUNDLE` / `PKG_FILES_ICON` | MEDIUM/LOW | install | 把产物加入 `package.json.files` |
+| `BUNDLE_DECL_INVALID` / `CLIENT_DECL_INVALID` / `PROFILE_DECL_INVALID` | HIGH/MEDIUM | manifest | 改成对象 |
 | `INVARIANTS_DEP` / `INVARIANTS_IMPORT` | BLOCKER | compatibility | `dshpd_migrate remove-invariants-dep` + 改源码 |
 | `INVARIANTS_ROW` | HIGH | compatibility | 删除 patch 行 |
 | `SUBPATH_PACKAGE_JSON` | MEDIUM | compatibility | 改用 locale + icon 导出 |

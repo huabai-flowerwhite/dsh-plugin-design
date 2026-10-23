@@ -71,7 +71,7 @@ dsh-plugin-design/
 
 纯函数、无 I/O；`host.js` 的 `collectModel` 先把插件目录读成模型，再交给 `analyzeModel`。这样规则可以单测，也能被 route（node:fs）与 tool（ctx.fs）共用。
 
-- 官方契约：`engines.dsh`（含 `workspace:` 拒绝、运行时版本满足性）、`dsh.manifestVersion`、`dsh.bundle.patch`（字符串/数组、越界、缺失）、`dsh.client`（platform / `exports["./client"]` / bundle 存在性 / factory 形态 / 注册 id）、`exports["./package.json"]`、子路径 `package.json`、`icon`。
+- 官方契约：`engines.dsh`（含 `workspace:` 拒绝、运行时版本满足性）、`dsh.manifestVersion`、`dsh.bundle.patch`（字符串/数组、越界、缺失、npm files 覆盖）、`dsh.client`（platform / `exports["./client"]` / bundle 存在性 / factory 形态 / 注册 id / `inject`/`external`/`immediately` 类型 / 自引用 / 基线模块）、Host 入口、`exports["./package.json"]`、子路径 `package.json`、图标格式与 256 KiB 上限、`type: module`、npm `files` 完整性。
 - 0.2.0 移除项：`@deepseek-ai/dsh-invariants` / `<pkg>/invariant` 依赖与 import、patch 中的 invariant 行。
 - 源码：globalThis/window/prototype patch、类型断言绕过、模块级 session 状态、危险命令、命令注入、硬编码密钥、eval/new Function、定时器未清理、工具缺 `output`、waterfall 缺 `next()`。
 - 结论：`BLOCKED`（任意 BLOCKER）/ `NEEDS_REVIEW`（任意 CRITICAL）/ `READY_TO_MODIFY`；维度分从 100 扣严重度权重。
@@ -102,7 +102,7 @@ dsh-plugin-design/
 
 ## 验证计划
 
-- **静态**：`npm test`（23 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、12 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
+- **静态**：`npm test`（25 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、12 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
 - **运行时**：重启 dsh 后确认 12 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、设置页扫描/分析返回 JSON。
 - **生命周期**：插件卸载后工具、路由、slot 全部消失（由 `ctx` 注册与 `ctx.effect` 保证）。
 - 完整的 DH-TP-SDK 认证矩阵（§26–§34）需在 dsh 运行时内由 `dshpd_analyze` + 人工验证完成，属启发式 + 手动范畴。
@@ -116,3 +116,4 @@ dsh-plugin-design/
 5. `dshpd_migrate` 只做受限的 `package.json` 迁移，不改源码。
 6. 设置页只读路由使用 node:fs（用户主动选择目录），不经过 workspace 沙箱。
 7. SemVer 检查支持 `^ ~ > >= < <= =`、通配符、部分版本、`||`；不支持 hyphen range 与 `!=`。
+8. npm `files` 覆盖检查是目录前缀启发式；ESM 检测是 `.js/.mjs` 源码的 `import/export` 语法扫描，不做 npm pack 模拟。

@@ -2,7 +2,7 @@
 
 ## 1.2.1 — 2026-10-23
 
-设置页与文档的可读性更新，不改变工具行为。
+设置页、文档与规则集的小版本更新；工具签名不变。
 
 ### Changed
 
@@ -11,7 +11,17 @@
 - 设置页的「规范修改」提示词同步带上「先分析出 design.md，确认后再修改/规范/开发」。
 - README 重排为「是什么 → 安装 → 3 步使用 → 设置页 → 原理 → 工具/兼容性」，补充桌面端 profile、刷新页面、已知限制说明。
 - `design.md` 增加「使用话术」与「设置页信息架构」；`dsh.plugin.yaml` 描述同步。
+- 根目录与包内的 `deepseek-harness-product-technical-framework.md`、`DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md` 同步到 0.2.1-rc.2；SDK 规范升到 1.2.1（新增 §48）。
 - 版本号 `1.2.0` → `1.2.1`。
+
+### Added (rules)
+
+- `HOST_EXPORT_MISSING`：声明 client 但没有 `exports["."]` / `main`。
+- `CLIENT_INJECT_INVALID` / `CLIENT_EXTERNAL_INVALID` / `CLIENT_IMMEDIATELY_INVALID` / `CLIENT_EXTERNAL_SELF` / `CLIENT_EXTERNAL_BASELINE`。
+- `PKG_ICON_FORMAT` / `PKG_ICON_TOO_LARGE`（SVG/PNG/JPEG/WebP，≤256 KiB）。
+- `PKG_NO_TYPE_MODULE`：源码用 ESM 但缺少 `"type": "module"`。
+- `PKG_FILES_BUNDLE_PATCH` / `PKG_FILES_CLIENT_BUNDLE` / `PKG_FILES_ICON`：npm `files` 漏发布关键产物。
+- `BUNDLE_DECL_INVALID` / `CLIENT_DECL_INVALID` / `PROFILE_DECL_INVALID`。
 
 ## 1.2.0 — 2026-10-23
 

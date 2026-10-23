@@ -154,6 +154,7 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 - 设置页文案重写：先讲“能帮你做什么”，再给 **3 步聊天框用法**；明确 **产出 `design.md` 后可以继续修改 / 规范 / 开发插件**。
 - README 重排为「安装 → 使用 → 原理 → 技术信息」，并补充设置页三个按钮的说明。
+- 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
 - 版本号 `1.2.0` → `1.2.1`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
 
 <details>
@@ -188,7 +189,7 @@ dsh-plugin-design/
 │   ├── host.js                 # 12 个工具、持久化备份/journal、设置页只读路由
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 23 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
+└── tests/                      # 25 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
 ```
 
 ## 测试
@@ -210,6 +211,7 @@ npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 5. `dshpd_migrate` 只做受限的 `package.json` 迁移，不自动改源码。
 6. 设置页的 `/discover`、`/analyze` 使用 node:fs 只读扫描，仅用于用户主动选择的插件目录。
 7. 阶段 1 的读取与阶段 2 的写入都走 agent 平面 `fs` 与 `sandboxPolicy`：目标插件在会话 workspace 之外时，需要 danger-full-access，或把会话 cwd 设到插件父目录。
+8. npm `files` 覆盖检查是目录前缀启发式；ESM 检测是 `.js/.mjs` 源码的 `import/export` 语法扫描，不做 npm pack 模拟。
 
 ## 更多文档
 

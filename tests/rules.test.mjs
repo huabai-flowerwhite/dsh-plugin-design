@@ -131,3 +131,90 @@ test('client declaration without an export is a blocker', () => {
   assert.equal(result.overall, 'BLOCKED')
   assert.ok(result.migrations.some((migration) => migration.id === 'client-meta'))
 })
+
+test('client declaration validates inject/external/immediately and self-reference', () => {
+  const result = analyzeModel({
+    pluginPath: 'X:/fixture',
+    manifestRaw: null,
+    pkgRaw: '{}',
+    pkg: {
+      name: 'p',
+      version: '1.0.0',
+      description: 'x',
+      icon: 'assets/icon.svg',
+      type: 'module',
+      engines: { dsh: '>=0.1.5-rc.1' },
+      exports: { '.': './src/index.js', './client': './lib/client.js' },
+      dsh: {
+        manifestVersion: 1,
+        bundle: { patch: './cordis.patch.yml' },
+        client: { platform: 'web', inject: 'slots', external: ['p', 'react'], immediately: 'yes' },
+      },
+    },
+    pkgError: null,
+    cordisPatchRaw: null,
+    bundlePatches: [{ path: './cordis.patch.yml', exists: true, raw: '- insert:\n    - id: p\n      name: p\n' }],
+    clientBundleExists: true,
+    clientBundleRaw: 'window.__ModuleLoader__.load({ id: "p", factory: (require) => { return {}; } });',
+    defaultClientBundleExists: true,
+    clientSourceFiles: [],
+    iconExists: true,
+    iconBytes: 100,
+    iconExt: 'svg',
+    sourceFiles: [],
+    hasTests: true,
+    hasReadme: true,
+    hasLicense: true,
+    harnessVersion: '0.2.1-rc.2',
+  })
+  const ids = result.issues.map((issue) => issue.id)
+  assert.ok(ids.includes('CLIENT_INJECT_INVALID'))
+  assert.ok(ids.includes('CLIENT_IMMEDIATELY_INVALID'))
+  assert.ok(ids.includes('CLIENT_EXTERNAL_SELF'))
+  assert.ok(ids.includes('CLIENT_EXTERNAL_BASELINE'))
+})
+
+test('package metadata checks ESM type, icon limits and npm files coverage', () => {
+  const result = analyzeModel({
+    pluginPath: 'X:/fixture',
+    manifestRaw: null,
+    pkgRaw: '{}',
+    pkg: {
+      name: 'q',
+      version: '1.0.0',
+      description: 'x',
+      main: './index.js',
+      icon: 'assets/big.gif',
+      files: ['package.json'],
+      engines: { dsh: '>=0.1.5-rc.1' },
+      exports: { '.': './index.js', './client': './lib/client.js' },
+      dsh: {
+        manifestVersion: 1,
+        bundle: { patch: './cordis.patch.yml' },
+        client: { platform: 'web' },
+      },
+    },
+    pkgError: null,
+    cordisPatchRaw: null,
+    bundlePatches: [{ path: './cordis.patch.yml', exists: true, raw: '- insert:\n    - id: q\n      name: q\n' }],
+    clientBundleExists: true,
+    clientBundleRaw: 'window.__ModuleLoader__.load({ id: "q", factory: (require) => { return {}; } });',
+    defaultClientBundleExists: true,
+    clientSourceFiles: [],
+    iconExists: true,
+    iconBytes: 300000,
+    iconExt: 'gif',
+    sourceFiles: [{ path: 'X:/fixture/src/index.js', relative: 'src/index.js', content: 'export const value = 1\n' }],
+    hasTests: true,
+    hasReadme: true,
+    hasLicense: true,
+    harnessVersion: '0.2.1-rc.2',
+  })
+  const ids = result.issues.map((issue) => issue.id)
+  assert.ok(ids.includes('PKG_NO_TYPE_MODULE'))
+  assert.ok(ids.includes('PKG_ICON_FORMAT'))
+  assert.ok(ids.includes('PKG_ICON_TOO_LARGE'))
+  assert.ok(ids.includes('PKG_FILES_ICON'))
+  assert.ok(ids.includes('PKG_FILES_BUNDLE_PATCH'))
+  assert.ok(ids.includes('PKG_FILES_CLIENT_BUNDLE'))
+})

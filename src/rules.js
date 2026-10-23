@@ -69,6 +69,9 @@ const CLIENT_BASELINE = new Set([
   '@deepseek-ai/dsh-client-ui-dockkit',
 ])
 
+const ICON_EXTENSIONS = new Set(['svg', 'png', 'jpg', 'jpeg', 'webp'])
+const ICON_MAX_BYTES = 256 * 1024
+
 const TEST_FILE = /(^|[\\/])(tests?|__tests__)([\\/]|$)|\.(test|spec)\.[^.]+$/i
 
 function isPlainObject(value) {
@@ -81,6 +84,10 @@ function nonEmptyString(value) {
 
 function stringArray(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []
+}
+
+function isStringArray(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
 
 export function isTestSource(path) {
@@ -315,6 +322,33 @@ function packageSections(pkg) {
     .map((section) => [section, pkg[section]])
 }
 
+function normalizePackagePath(value) {
+  return String(value || '').trim().replace(/^\.\//, '').replace(/\\/g, '/')
+}
+
+/** Whether npm's `files` list publishes a package-relative path. */
+function packageFilesCover(files, target) {
+  if (!Array.isArray(files)) return true
+  const normalizedTarget = normalizePackagePath(target)
+  if (normalizedTarget === '') return true
+  return files.some((entry) => {
+    if (typeof entry !== 'string') return false
+    const normalizedEntry = normalizePackagePath(entry).replace(/\/+$/, '')
+    return normalizedTarget === normalizedEntry || normalizedTarget.startsWith(normalizedEntry + '/')
+  })
+}
+
+/** Whether a `.js`/`.mjs` source file uses ESM syntax (needs package.json type=module). */
+function sourceUsesEsm(sourceFiles) {
+  for (const file of sourceFiles) {
+    if (!isPlainObject(file) || typeof file.content !== 'string') continue
+    const path = String(file.path || '')
+    if (!/\.(?:js|mjs)$/i.test(path)) continue
+    if (/^\s*(?:import\s|export\s)/m.test(file.content)) return true
+  }
+  return false
+}
+
 function collectClientImports(sourceFiles) {
   const specifiers = new Set()
   for (const file of sourceFiles) {
@@ -355,6 +389,7 @@ export function analyzeModel(model) {
 
   const pkg = isPlainObject(model.pkg) ? model.pkg : null
   const pkgError = nonEmptyString(model.pkgError)
+  const sourceFiles = Array.isArray(model.sourceFiles) ? model.sourceFiles : []
   const manifestRaw = typeof model.manifestRaw === 'string' ? model.manifestRaw : null
   const manifest = parseManifestHeuristic(manifestRaw)
   const harnessVersion = nonEmptyString(model.harnessVersion)
@@ -434,7 +469,36 @@ export function analyzeModel(model) {
       push({ id: 'PKG_NO_ICON', severity: 'INFO', category: 'install', title: '未声明插件图标', detail: '0.2.x 插件管理器读取 package.json.icon（SVG/PNG/JPEG/WebP，≤256 KiB，须位于包目录内）；缺失时显示通用图标。', file: 'package.json' })
     } else if (model.iconExists === false) {
       push({ id: 'PKG_ICON_MISSING', severity: 'MEDIUM', category: 'install', title: '声明的图标文件不存在', detail: 'package.json.icon 指向的文件在包目录内不存在。', file: String(pkg.icon) })
+    } else {
+      const iconExt = typeof model.iconExt === 'string' ? model.iconExt : String(pkg.icon).split('.').pop().toLowerCase()
+      if (!ICON_EXTENSIONS.has(iconExt)) {
+        push({
+          id: 'PKG_ICON_FORMAT', severity: 'MEDIUM', category: 'install',
+          title: '图标格式不受支持', detail: '官方插件管理器支持 SVG / PNG / JPEG / WebP，当前为 .' + iconExt + '。', file: String(pkg.icon),
+        })
+      }
+      if (typeof model.iconBytes === 'number' && model.iconBytes > ICON_MAX_BYTES) {
+        push({
+          id: 'PKG_ICON_TOO_LARGE', severity: 'MEDIUM', category: 'install',
+          title: '图标超过 256 KiB', detail: '图标当前 ' + model.iconBytes + ' 字节；官方上限为 262144 字节。', file: String(pkg.icon),
+        })
+      }
+      if (!packageFilesCover(pkg.files, pkg.icon)) {
+        push({
+          id: 'PKG_FILES_ICON', severity: 'LOW', category: 'install',
+          title: 'npm files 列表漏掉图标', detail: '发布后插件管理器将拿不到图标；把该文件加入 package.json.files。', file: 'package.json',
+        })
+      }
     }
+  }
+
+  if (pkg !== null && pkg.type !== 'module' && sourceUsesEsm(sourceFiles)) {
+    push({
+      id: 'PKG_NO_TYPE_MODULE', severity: 'HIGH', category: 'manifest',
+      title: 'ESM 源码但缺少 "type": "module"',
+      detail: '源码使用 import/export，而 package.json 没有声明 type=module；Node 会按 CommonJS 解析 .js 并直接报错。',
+      file: 'package.json',
+    })
   }
 
   // ---- engines.dsh / peer compatibility ---------------------------------
@@ -500,6 +564,15 @@ export function analyzeModel(model) {
     push({ id: 'DSH_FIELD_INVALID', severity: 'HIGH', category: 'manifest', title: 'package.json.dsh 不是对象', detail: 'dsh 字段承载 bundle / profile / client 角色声明，必须是对象。', file: 'package.json' })
   }
   if (dshField !== null) {
+    if (dshField.bundle !== undefined && !isPlainObject(dshField.bundle)) {
+      push({ id: 'BUNDLE_DECL_INVALID', severity: 'HIGH', category: 'bundle', title: 'dsh.bundle 不是对象', detail: 'bundle 声明必须形如 { "patch": "./cordis.patch.yml" }。', file: 'package.json' })
+    }
+    if (dshField.client !== undefined && !isPlainObject(dshField.client)) {
+      push({ id: 'CLIENT_DECL_INVALID', severity: 'HIGH', category: 'client', title: 'dsh.client 不是对象', detail: 'client 声明必须形如 { "platform": "web", "external": [...] }。', file: 'package.json' })
+    }
+    if (dshField.profile !== undefined && !isPlainObject(dshField.profile)) {
+      push({ id: 'PROFILE_DECL_INVALID', severity: 'MEDIUM', category: 'manifest', title: 'dsh.profile 不是对象', detail: 'profile 声明必须形如 { "bundles": [...] }。', file: 'package.json' })
+    }
     if (official.manifestVersion === null) {
       push({
         id: 'MANIFEST_VERSION_MISSING', severity: 'LOW', category: 'manifest',
@@ -548,6 +621,17 @@ export function analyzeModel(model) {
         }
       }
       official.bundle.filesPresent = allPresent
+      if (pkg !== null) {
+        for (const patchPath of declared) {
+          if (!packageFilesCover(pkg.files, patchPath)) {
+            push({
+              id: 'PKG_FILES_BUNDLE_PATCH', severity: 'MEDIUM', category: 'install',
+              title: 'npm files 列表漏掉 bundle patch', detail: '发布后的包将缺少 ' + patchPath + '，安装后无法挂载；把该文件（或所在目录）加入 package.json.files。',
+              file: 'package.json',
+            })
+          }
+        }
+      }
     }
     const base = Array.isArray(model.bundlePatches) ? model.bundlePatches : []
     if (base.length > 0 && base.every((entry) => isPlainObject(entry) && entry.exists === true)) {
@@ -588,6 +672,48 @@ export function analyzeModel(model) {
     && /factory\s*:/.test(model.clientBundleRaw)
 
   if (client !== null) {
+    if (client.inject !== undefined && !isStringArray(client.inject)) {
+      push({
+        id: 'CLIENT_INJECT_INVALID', severity: 'HIGH', category: 'client',
+        title: 'dsh.client.inject 不是字符串数组', detail: 'inject 是客户端模块的包名依赖列表；必须是字符串数组。', file: 'package.json',
+      })
+    }
+    if (client.external !== undefined && !isStringArray(client.external)) {
+      push({
+        id: 'CLIENT_EXTERNAL_INVALID', severity: 'HIGH', category: 'client',
+        title: 'dsh.client.external 不是字符串数组', detail: 'external 是精确的模块表 specifier 列表；必须是字符串数组。', file: 'package.json',
+      })
+    }
+    if (client.immediately !== undefined && typeof client.immediately !== 'boolean') {
+      push({
+        id: 'CLIENT_IMMEDIATELY_INVALID', severity: 'MEDIUM', category: 'client',
+        title: 'dsh.client.immediately 不是布尔值', detail: 'immediately 控制 boot 第一阶段注册屏障，只能是 true/false。', file: 'package.json',
+      })
+    }
+    const declaredExternal = stringArray(client.external)
+    if (official.packageName !== null && declaredExternal.some((specifier) => specifier === official.packageName || specifier.startsWith(official.packageName + '/'))) {
+      push({
+        id: 'CLIENT_EXTERNAL_SELF', severity: 'HIGH', category: 'client',
+        title: 'dsh.client.external 引用了自身包', detail: 'client-modules 禁止一个 row 在 external 中声明自己的包；会直接拒绝组合。', file: 'package.json',
+      })
+    }
+    for (const specifier of declaredExternal) {
+      if (CLIENT_BASELINE.has(specifier)) {
+        push({
+          id: 'CLIENT_EXTERNAL_BASELINE', severity: 'INFO', category: 'client',
+          title: 'dsh.client.external 重复声明平台基线模块', detail: specifier + ' 已在平台基线中，无需再写；保留无害但冗余。', file: 'package.json',
+        })
+      }
+    }
+    const hostExport = exportsField === null ? null : resolveExportTarget(exportsField, '.')
+    if (hostExport === null && !nonEmptyString(pkg.main)) {
+      push({
+        id: 'HOST_EXPORT_MISSING', severity: 'HIGH', category: 'manifest',
+        title: '缺少 Host 入口（exports["."] 或 main）',
+        detail: 'client 包也必须有 Host 半体入口：行按包名导入它，空实现也要有 exports["."]。',
+        file: 'package.json',
+      })
+    }
     if (official.client.platform !== 'web') {
       push({
         id: 'CLIENT_PLATFORM', severity: 'MEDIUM', category: 'client',
@@ -630,6 +756,13 @@ export function analyzeModel(model) {
         file: 'package.json',
       })
     }
+    if (clientExport !== null && !packageFilesCover(pkg.files, clientExport.target)) {
+      push({
+        id: 'PKG_FILES_CLIENT_BUNDLE', severity: 'MEDIUM', category: 'install',
+        title: 'npm files 列表漏掉 client bundle', detail: '发布后的包将缺少 ' + clientExport.target + '，设置页等 UI 不会加载；把该文件（或 lib 目录）加入 package.json.files。',
+        file: 'package.json',
+      })
+    }
     const requested = new Set(stringArray(client.external))
     for (const specifier of collectClientImports(Array.isArray(model.clientSourceFiles) ? model.clientSourceFiles : [])) {
       if (CLIENT_BASELINE.has(specifier) || requested.has(specifier)) continue
@@ -661,7 +794,6 @@ export function analyzeModel(model) {
       })
     }
   }
-  const sourceFiles = Array.isArray(model.sourceFiles) ? model.sourceFiles : []
   for (const file of sourceFiles) {
     if (!isPlainObject(file) || typeof file.content !== 'string') continue
     if (isTestSource(file.relative || file.path)) continue
