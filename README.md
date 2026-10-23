@@ -80,6 +80,7 @@ dsh-plugin-design/
 ├── README.md / design.md / CHANGELOG.md / LICENSE
 ├── docs/official-plugin-contract-0.2.md   # 规则集事实依据（含官方链接与规则映射）
 ├── docs/client-ui-recovery.md             # UI 消失排查、构建契约、当前座位
+├── docs/service-catalog-0.2.1.md          # client 服务目录快照（workspaces/uiWorkspace 等）
 ├── lib/client.js               # 构建产物（factory-form，由 scripts/build-client.mjs 生成）
 ├── scripts/build-client.mjs    # src/client.js → lib/client.js（含 --check）
 ├── src/
@@ -88,7 +89,7 @@ dsh-plugin-design/
 │   ├── profiles.js             # desktop/web profile 挂载、包解析、mount
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 33 个规则/宿主/客户端/bundle/部署测试 + 3 个插件样本
+└── tests/                      # 37 个规则/宿主/客户端/bundle/部署/服务测试 + 3 个插件样本
 ```
 
 - 你主要接触 `src/`、`lib/client.js`、`docs/` 和测试；
@@ -165,6 +166,7 @@ $DSH_HOME/profiles/desktop/cordis.patch.yml
               → CLIENT_ROUTE_MISSING：补 Host 路由
               → CLIENT_NO_UI_SLOT / LEGACY_SLOT：改 slot 名称
               → CLIENT_STYLES_SERVICE：去掉已移除的 styles.insert
+              → CLIENT_WORKSPACES_PICKDIRECTORY：取目录用 uiWorkspace.pickDirectory()
 ```
 
 更完整的排查与构建说明见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
@@ -354,9 +356,14 @@ bash install.sh --profile desktop --mode link
 | `CLIENT_ROUTE_MISSING` | client fetch 的本地路由在 Host 源码里找不到，请求落到 SPA HTML | 补 `webServer.register({ path })`，或修正 fetch 路径 |
 | `WEBSERVER_NOT_INJECTED` | 用了 `ctx.webServer` 但没有等待 `webServer` 服务 | 加 `inject` 或用 `ctx.inject(['webServer'], ...)` |
 | `CLIENT_STYLES_SERVICE` | 使用了已移除的 `styles.insert` | 改为插件自己创建 `<style>` 或内联 style |
+| `CLIENT_WORKSPACES_PICKDIRECTORY` | 把 `workspaces` 当成目录选择器 | 改用 `ctx.get('uiWorkspace').pickDirectory()` |
+| `CLIENT_UNKNOWN_SERVICE` | `ctx.get('...')` 不在当前 client 服务目录 | 若由其他插件提供可忽略；否则核对 provider |
+| `CLIENT_LEGACY_SERVICE` | 使用了已移除的 client 服务 | 按 `docs/service-catalog-0.2.1.md` 替换 |
 | `CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT` | factory 模块没有导出 `apply` / `inject` | 修构建出口 |
 | `CLIENT_NO_UI_SLOT` | 没有注册任何已知 UI 座位 | 检查是否用了已移除的 slot 名称 |
 | `CLIENT_LEGACY_SLOT` | 用了旧版 `settings.plugin.item` 等 slot | 改用 `settings.section` / `settings.plugins.tab` / `plugins.item` |
+
+> 特别注意：`workspaces` 是**合法服务**，所以只查“未知服务”不会报它；但 `pickDirectory` 在 `uiWorkspace` 上。`CLIENT_WORKSPACES_PICKDIRECTORY` 专门检查这种“服务名合法、方法不存在”的调用。
 
 > 修复顺序：改 client 源码 → **重新构建** `lib/client.js` → 刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → 再跑 `dshpd_verify`。
 
@@ -434,7 +441,7 @@ bash install.sh --profile desktop --mode link
 
 - **官方契约**：`engines.dsh`、`dsh.manifestVersion`、`dsh.bundle.patch`、`dsh.client`、Host 入口、`exports`、图标、`type: module`、npm `files`。
 - **0.2.0 移除项**：`@deepseek-ai/dsh-invariants`、`<pkg>/invariant`、旧 patch 行、子路径 `package.json`。
-- **UI**：构建过期、无构建脚本、bundle 缺 `apply`/`inject`、旧 slot、React 未引入、已移除的 `styles.insert`、client 路由缺失、webServer 未注入。
+- **UI**：构建过期、无构建脚本、bundle 缺 `apply`/`inject`、旧 slot、React 未引入、已移除的 `styles.insert`、client 路由缺失、webServer 未注入；以及 **client 服务目录**检查（`workspaces` ≠ `uiWorkspace`、未知服务、旧服务）。服务快照见 [docs/service-catalog-0.2.1.md](docs/service-catalog-0.2.1.md)。
 - **源码安全**：globalThis/window/prototype patch、类型断言绕过、模块级 session 状态、危险命令、命令注入、硬编码密钥、`eval`/`new Function`、定时器未清理、工具缺 `output`、waterfall 缺 `next()`。
 
 ### 持久化状态
@@ -456,6 +463,13 @@ bash install.sh --profile desktop --mode link
 - 0.2.1 起安装/启动**先看 `engines.dsh`**，满足即可；不再需要 `@deepseek-ai/dsh*` peer。
 - 设置页目前是说明 + 扫描/分析（`settings.section`）。如果以后要暴露**可持久化配置**，应迁移到插件配置卡片档位（`plugins.item` + `ctx.configForms` + Host 设置命名空间）。
 - 规则集版本与 Harness 版本解耦：`dshpd_analyze` 输出里会带 `ruleset.version`。
+
+## 1.3.1 更新要点
+
+- **client 服务目录**：新增 `src/services.js` 与 [docs/service-catalog-0.2.1.md](docs/service-catalog-0.2.1.md)，规则覆盖 `CLIENT_WORKSPACES_PICKDIRECTORY`（`workspaces` 不是目录选择器，`uiWorkspace.pickDirectory()` 才是）、`CLIENT_UNKNOWN_SERVICE`、`CLIENT_LEGACY_SERVICE`。
+- 依据 GitHub 当前 `packages/client/ui-workspace/src/client/index.ts` 与本地 0.2.1 bundle：`ctx.get('workspaces')` 本身合法（workspace controller），`pickDirectory` 在 `uiWorkspace` 上。
+- 更新 UI 座位快照（`shell.*`、`deliverables.*`、`main.*`、`workspace.*`）。
+- 测试增加服务目录/别名调用用例；总计 37。
 
 ## 1.3.0 更新要点
 
@@ -508,6 +522,7 @@ npm run check:client    # 检查 lib/client.js 是否与 src/client.js 漂移
 
 - [官方插件契约（0.2.x）与规则映射](docs/official-plugin-contract-0.2.md)
 - [UI 恢复与构建指南](docs/client-ui-recovery.md)
+- [client 服务目录快照（workspaces / uiWorkspace）](docs/service-catalog-0.2.1.md)
 - [实现设计与落地经验](design.md)
 - [变更记录](CHANGELOG.md)
 - [DH-TP-SDK 工程化规范](DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md)

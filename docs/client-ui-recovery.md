@@ -53,6 +53,7 @@
 | 有源码但没有构建命令 | `CLIENT_NO_BUILD_SCRIPT` | 增加 `build:client` / `prepare`，或把源码改成 factory-body + 包装脚本 |
 | 设置页/悬浮层不注册 | `CLIENT_NO_UI_SLOT` / `CLIENT_LEGACY_SLOT` | 改用当前座位名（见第 4 节） |
 | apply 时白屏/报错 | `CLIENT_REACT_MISSING` / `CLIENT_STYLES_SERVICE` | `require('react')`；去掉已移除的 `styles.insert` |
+| 目录选择器点了没反应 | `CLIENT_WORKSPACES_PICKDIRECTORY` | `workspaces` 没有 `pickDirectory`；改用 `ctx.get('uiWorkspace').pickDirectory()` |
 | 设置页 fetch 报 `Unexpected token "<"` | `CLIENT_ROUTE_MISSING` / `WEBSERVER_NOT_INJECTED` | 补 `webServer.register({ path })`，或 `ctx.inject(['webServer'], ...)` |
 | 模块注册了但页面没有 | `CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT` | 修构建出口 |
 | 设置页整个消失 | `runtime.inGraph=false` | 先看 `rootCause` / `deployment.desktop.mounted`，再查 row / `dsh.client` / `exports` / 重启 |

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.1 — 2026-10-23
+
+补齐“服务名存在但方法用错”这一类规则缺口：`workspaces.pickDirectory()` 是合法语法、运行时静默失效。
+
+### Added
+
+- `src/services.js`：client 服务目录快照、旧服务映射、`ctx.get('...')` 提取、`workspaces.pickDirectory` 直接/别名调用检测。
+- `CLIENT_WORKSPACES_PICKDIRECTORY`（HIGH）：`workspaces` 是 workspace controller，`pickDirectory()` 在 `uiWorkspace` 上。
+- `CLIENT_UNKNOWN_SERVICE`（MEDIUM）：`ctx.get('...')` 不在当前服务目录；第三方自定义服务可忽略。
+- `CLIENT_LEGACY_SERVICE`（HIGH）：已知已移除服务；`styles` 仍沿用 `CLIENT_STYLES_SERVICE`。
+- `docs/service-catalog-0.2.1.md`：GitHub `ui-workspace` 源码、本地 0.2.1 bundle、共享模块基线的快照与更新流程。
+- 规则测试覆盖服务目录、直接/别名 picker 调用、合法 API 不误报；总计 37。
+
+### Changed
+
+- `KNOWN_UI_SLOTS` 补上当前 `shell.*`、`deliverables.*`、`main.*`、`workspace.*` 等座位前缀。
+- README/design/contract/recovery 文档补充服务目录检查。
+
 ## 1.3.0 — 2026-10-23
 
 面向桌面版：把“挂载到错误 profile”变成可诊断、可修复、可校验的一等能力。

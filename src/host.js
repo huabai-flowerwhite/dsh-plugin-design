@@ -888,11 +888,15 @@ export default {
           applyPresent: result === null ? null : result.official.client.applyPresent,
           injectPresent: result === null ? null : result.official.client.injectPresent,
           uiSlots: result === null ? [] : result.official.client.uiSlots,
+          services: result === null ? [] : result.official.client.services,
+          unknownServices: result === null ? [] : result.official.client.unknownServices,
+          legacyServices: result === null ? [] : result.official.client.legacyServices,
           issues: uiIssues,
           howToUse: [
             'runtime.inGraph=false：先看 rootCause。DESKTOP_PROFILE_NOT_MOUNTED 表示桌面版 patch 没挂载（web 挂载无效）；CLIENT_NOT_DISCOVERED_IN_GRAPH 表示已挂载但需重启/修清单。',
             'buildStale=true：先重新构建 client bundle（如 npm run build:client），再刷新页面；否则页面加载的仍是旧 UI。',
             'issues 里的 CLIENT_ROUTE_MISSING / WEBSERVER_NOT_INJECTED 会让设置页 fetch 落到 SPA fallback，表现为 JSON 解析错误或页面空白。',
+            'unknownServices 可能是其他插件提供的服务；legacyServices / CLIENT_WORKSPACES_PICKDIRECTORY 才是当前版本下会静默失效的旧 API。',
           ],
         }
       },

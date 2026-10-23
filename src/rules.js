@@ -13,6 +13,13 @@
 // in host.js) and receive findings, an official-contract summary, actionable
 // migrations, per-dimension scores, and a verdict.
 
+import {
+  CLIENT_SERVICE_CATALOG,
+  LEGACY_CLIENT_SERVICES,
+  collectClientServiceRefs,
+  findWorkspacesPickerMisuse,
+} from './services.js'
+
 /** Ruleset identity surfaced in tool output and documentation. */
 export const RULESET = Object.freeze({
   version: '0.2.1',
@@ -75,9 +82,12 @@ const ICON_MAX_BYTES = 256 * 1024
 /** Common UI seats a browser half can register into (used only as a heuristic hint). */
 const KNOWN_UI_SLOTS = [
   'settings.section', 'settings.plugins.tab', 'settings.general.item', 'settings.onboarding',
+  'settings.action', 'settings.close', 'settings.header', 'settings.launcher',
+  'settings.models.sign-in', 'settings.trigger',
   'plugins.item', 'plugins.detail.', 'plugins.tab', 'plugins.bundle.',
-  'shell.overlay', 'tool.call.toolview', 'tool.call.images',
-  'conversation.', 'sidebar.', 'main', 'workspace.toast', 'rightbar.',
+  'shell.', 'tool.call.toolview', 'tool.call.images',
+  'conversation.', 'sidebar.', 'main', 'main.', 'workspace.', 'rightbar.',
+  'deliverables.', 'dsh.',
 ]
 
 /** Slot names that belonged to older settings-card APIs and no longer exist. */
@@ -483,6 +493,9 @@ export function analyzeModel(model) {
       applyPresent: false,
       injectPresent: false,
       uiSlots: [],
+      services: [],
+      unknownServices: [],
+      legacyServices: [],
       externals: client !== null ? stringArray(client.external) : [],
     },
     profile: profile !== null,
@@ -879,11 +892,47 @@ export function analyzeModel(model) {
         file: null,
       })
     }
-    if (/styles\s*\.\s*insert|ctx\s*\.\s*get\s*\(\s*['"]styles['"]\s*\)/.test(clientText)) {
+    const serviceRefs = collectClientServiceRefs(clientText)
+    official.client.services = serviceRefs
+    const legacyHits = new Set()
+    for (const service of serviceRefs) {
+      const legacy = LEGACY_CLIENT_SERVICES.get(service)
+      if (legacy !== undefined) {
+        legacyHits.add(service)
+        official.client.legacyServices.push(service)
+        push({
+          id: service === 'styles' ? 'CLIENT_STYLES_SERVICE' : 'CLIENT_LEGACY_SERVICE',
+          severity: 'HIGH', category: 'client',
+          title: '使用了已移除的 client 服务：' + service,
+          detail: legacy.reason + (legacy.replacement ? ' 改用 ' + legacy.replacement + '。' : ''),
+          file: null,
+        })
+        continue
+      }
+      if (!CLIENT_SERVICE_CATALOG.has(service)) {
+        official.client.unknownServices.push(service)
+        push({
+          id: 'CLIENT_UNKNOWN_SERVICE', severity: 'MEDIUM', category: 'client',
+          title: 'ctx.get("' + service + '") 不在当前 client 服务目录中',
+          detail: '规则集快照（0.2.1）没有这个服务。如果它由其他插件提供，请忽略；如果是旧版服务名，请核对当前 provider 后再迁移。',
+          file: null,
+        })
+      }
+    }
+    if (/styles\s*\.\s*insert/.test(clientText) && !legacyHits.has('styles')) {
       push({
         id: 'CLIENT_STYLES_SERVICE', severity: 'HIGH', category: 'client',
         title: '使用了已移除的 styles 服务',
         detail: '当前 client 半体没有 styles.insert；样式应由插件自己创建 <style> 标签或用内联 style，否则 apply 会抛错、UI 不出现。',
+        file: null,
+      })
+    }
+    for (const misuse of findWorkspacesPickerMisuse(clientText)) {
+      push({
+        id: 'CLIENT_WORKSPACES_PICKDIRECTORY', severity: 'HIGH', category: 'client',
+        title: '把 workspaces 当成目录选择器（没有 pickDirectory）',
+        detail: '`workspaces` 是 workspace controller（list/create/rename/delete），目录选择器在 `uiWorkspace.pickDirectory()`。'
+          + '旧写法 `ctx.get("workspaces").pickDirectory()` 在 0.2.x 中不会弹窗。',
         file: null,
       })
     }
