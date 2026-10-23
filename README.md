@@ -1,11 +1,12 @@
 # dsh plugin design
 
-> 给 DSH 插件做体检、改造和 **UI 落地**。桌面端优先。
+> 给 DSH 插件做体检、改造、**部署**和 **UI 落地**。桌面端优先。
 
-一句话：**它先帮你把插件问题讲清楚，再生成一份可执行的 `design.md`；你确认后，它按施工图修改插件、补 UI、挂载到桌面端并做校验。**
+一句话：**它先帮你把插件问题讲清楚，再生成一份可执行的 `design.md`；你确认后，它按施工图修改插件、补 UI、部署并挂载到桌面端，最后做校验。**
 
-它特别适合三类事：
+它特别适合这几类事：
 
+- **第三方插件部署 / 版本适配**：把只在 web 可用、或只兼容旧版 DSH 的插件，按当前 0.2.x 规范迁移并挂载到 `desktop` profile。
 - **桌面端设置页 / 悬浮层 / 面板不出现**：先判断是没挂载到 `desktop` profile，还是 client bundle 过期、slot/路由失效，再给出修复步骤。
 - **插件没有 UI**：自动在 `design.md` 里补一份 UI 方案，先用文字线框告诉你大概长什么样，确认后再开发。
 - **旧插件要升级 / 规范化**：对照官方 0.2.x 契约检查清单、bundle、client、安装方式、安全与生命周期风险，改完可校验、可回滚。
@@ -21,10 +22,78 @@
 | 你遇到的现象 | 它怎么帮你 |
 |---|---|
 | 插件明明装了，桌面版设置页却没有入口 | 检查 `desktop` profile 是否挂载；没挂载就生成挂载行，`dshpd_mount` 可备份并追加 |
+| 第三方插件只在 web 能用 / 只兼容旧版 DSH | 按当前 0.2.x 契约检查并迁移 `engines.dsh`、`manifestVersion`、bundle、client、exports，再部署到 `desktop` profile |
+| 插件安装/发布不完整，缺 patch、client、icon | 检查 `package.json.dsh`、`files`、bundle patch、client bundle 与图标，给出要补的文件 |
 | 设置页以前有，升级 DSH 后消失 | 检查运行中的 client graph，区分「没挂载」「没重启」「bundle 过期」「slot/路由失效」 |
 | 插件只有 Host 能力，没有界面 | 在 `design.md` 生成 UI 方案：入口、文字线框、页面区块、数据/路由、实现清单 |
 | 改完 client 源码，页面还是旧 UI | 检查 `src/client` 与 `lib/client.js` 的时间差，提醒重新构建 |
 | 不知道从哪里开始改 | 先分析，产出 `design.md`；你审核后再动手，不会一上来就改源码 |
+
+---
+
+## 部署第三方插件 & 适配当前 DSH（核心场景）
+
+它不是只给“分析报告”。从发现插件到在桌面版里真正跑起来，整条链路都可以交给它：
+
+> “规范化”指按当前规则集 `0.2.1` 对齐 `package.json.dsh`、`engines.dsh`、`manifestVersion`、bundle、client、`exports`、npm `files`、图标，以及安全和生命周期要求。
+
+```text
+发现/读取 → 契约检查 → 生成 design.md → 你确认
+→ 迁移清单 / 修改源码 → 构建 client bundle
+→ 挂载到 desktop profile → 重启桌面版
+→ dshpd_ui_check → dshpd_verify（失败可 rollback）
+```
+
+### 典型应用场景
+
+| 场景 | 它会做什么 |
+|---|---|
+| **第三方插件只支持旧版 DSH** | 对照当前 0.2.x 契约，迁移 `engines.dsh`、`manifestVersion`、bundle、client、`exports`，清理已移除的 invariants/旧 API |
+| **插件只在 web profile 可用** | 检查 desktop profile 的挂载与包解析；生成挂载行，`dshpd_mount` 备份后追加，提示重启桌面版 |
+| **插件原来没有 UI** | 在 `design.md` 生成 UI 方案（入口、文字线框、页面区块、数据/路由），确认后按 `M-UI-*` 开发 |
+| **插件有 UI，但升级后消失** | 区分“没挂载 / 没重启 / bundle 过期 / slot 或路由失效”，逐项给出修复 |
+| **插件发布物不完整** | 检查 npm `files`、bundle patch、client bundle、icon、`type: module`，列出要补的文件 |
+| **改造后需要验证/回滚** | `approve → backup → apply/migrate → verify`；失败或结果不满意用 `dshpd_rollback` |
+
+### 交付标准
+
+- 默认以 **desktop profile 可加载** 为最终目标；
+- 清单迁移用 `dshpd_migrate`，源码修改用 `dshpd_apply`，client 产物必须重新构建；
+- desktop 挂载用 `dshpd_mount`（默认 dryRun，`apply:true` 才写，写前备份）；
+- 最后用 `dshpd_ui_check` 确认 `inGraph=true`，再用 `dshpd_verify` 做整体校验。
+
+> 支持来源是 web 插件、旧版插件，或从零开发的新插件；只对目标插件做备份、修改，并在其目录下写 `.dsh-plugin-design`，不会修改 DSH Core。
+>
+> 如果 desktop profile 解析不到包，工具会返回 `deployment.desktop.packageResolvable=false`，提示先把包 link/install 到 `$DSH_HOME/profiles/node_modules`，不会假装挂载成功。
+
+---
+
+## 目录结构（先认识它）
+
+```text
+dsh-plugin-design/
+├── install.ps1 / install.sh    # 官方安装优先，link 回退（互斥、幂等）
+├── package.json                # 官方清单：engines.dsh / dsh.bundle / dsh.client / exports / icon
+├── dsh.plugin.yaml             # DH-TP-SDK 附加工程化清单（运行时可选）
+├── cordis.patch.yml            # bundle patch 层：插入本插件 row
+├── assets/icon.svg             # 插件管理器图标
+├── README.md / design.md / CHANGELOG.md / LICENSE
+├── docs/official-plugin-contract-0.2.md   # 规则集事实依据（含官方链接与规则映射）
+├── docs/client-ui-recovery.md             # UI 消失排查、构建契约、当前座位
+├── lib/client.js               # 构建产物（factory-form，由 scripts/build-client.mjs 生成）
+├── scripts/build-client.mjs    # src/client.js → lib/client.js（含 --check）
+├── src/
+│   ├── index.js                # Host 入口 → host.js
+│   ├── host.js                 # 14 个工具、持久化备份/journal、设置页只读路由
+│   ├── profiles.js             # desktop/web profile 挂载、包解析、mount
+│   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
+│   └── client.js               # Client 半体源码（factory body）
+└── tests/                      # 33 个规则/宿主/客户端/bundle/部署测试 + 3 个插件样本
+```
+
+- 你主要接触 `src/`、`lib/client.js`、`docs/` 和测试；
+- `profiles.js` 负责桌面端/web 的 profile 差异；
+- 构建产物 `lib/client.js` 不要手改，统一走 `npm run build:client`。
 
 ---
 
@@ -411,29 +480,6 @@ bash install.sh --profile desktop --mode link
 - 安装优先 `dsh plugin add`，link 模式回退，两种方式互斥。
 
 </details>
-
-## 目录结构
-
-```text
-dsh-plugin-design/
-├── install.ps1 / install.sh    # 官方安装优先，link 回退（互斥、幂等）
-├── package.json                # 官方清单：engines.dsh / dsh.bundle / dsh.client / exports / icon
-├── dsh.plugin.yaml             # DH-TP-SDK 附加工程化清单（运行时可选）
-├── cordis.patch.yml            # bundle patch 层：插入本插件 row
-├── assets/icon.svg             # 插件管理器图标
-├── README.md / design.md / CHANGELOG.md / LICENSE
-├── docs/official-plugin-contract-0.2.md   # 规则集事实依据（含官方链接与规则映射）
-├── docs/client-ui-recovery.md             # UI 消失排查、构建契约、当前座位
-├── lib/client.js               # 构建产物（factory-form，由 scripts/build-client.mjs 生成）
-├── scripts/build-client.mjs    # src/client.js → lib/client.js（含 --check）
-├── src/
-│   ├── index.js                # Host 入口 → host.js
-│   ├── host.js                 # 14 个工具、持久化备份/journal、设置页只读路由
-│   ├── profiles.js             # desktop/web profile 挂载、包解析、mount
-│   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
-│   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 33 个规则/宿主/客户端/bundle/部署测试 + 3 个插件样本
-```
 
 ## 测试
 
