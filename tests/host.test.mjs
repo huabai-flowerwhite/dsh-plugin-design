@@ -51,7 +51,8 @@ function createFs() {
       return readdirSync(targetPath(target), { withFileTypes: true }).map((entry) => ({
         name: entry.name,
         type: entry.isDirectory() ? 'directory' : 'file',
-        displayPath: join(targetPath(target), entry.name),
+        // Mirror the real harness FsDirEntry: children carry a resolved target.
+        target: { displayPath: join(targetPath(target), entry.name) },
       }))
     },
     async stat(target) {

@@ -150,7 +150,13 @@ function createFsIo(fsApi) {
       try {
         const resolved = await fsApi.resolve(target)
         const entries = await fsApi.listDir(resolved)
-        return entries.map((entry) => ({ name: entry.name, type: entry.type, path: entry.displayPath }))
+        return entries.map((entry) => ({
+          name: entry.name,
+          type: entry.type,
+          path: entry.target && typeof entry.target.displayPath === 'string'
+            ? entry.target.displayPath
+            : entry.displayPath,
+        }))
       } catch (error) {
         return null
       }
@@ -413,11 +419,10 @@ function safeParseJson(raw) {
 function isDshSelfManifest(pkgRaw) {
   const pkg = safeParseJson(pkgRaw)
   if (pkg !== null) {
+    if (typeof pkg.name === 'string' && (pkg.name === '@deepseek-ai/dsh' || pkg.name.startsWith('@deepseek-ai/dsh-'))) return true
     if (isPlainObject(pkg._npx) && Array.isArray(pkg._npx.packages) && pkg._npx.packages.includes('@deepseek-ai/dsh')) return true
-    if (isPlainObject(pkg.dependencies) && Object.hasOwn(pkg.dependencies, '@deepseek-ai/dsh')) return true
   }
   return /"_npx"\s*:\s*\{[^}]*"packages"\s*:\s*\[[^\]]*@deepseek-ai\/dsh/.test(pkgRaw)
-    || /"@deepseek-ai\/dsh"\s*:/.test(pkgRaw)
 }
 
 // ---------------------------------------------------------------------------
@@ -931,8 +936,8 @@ export default {
           applied: true,
           filePath: args.filePath,
           matches: occurrences,
-          before: outcome && outcome.before !== undefined ? outcome.before : undefined,
-          after: outcome && outcome.after !== undefined ? outcome.after : undefined,
+          before: outcome && outcome.before !== undefined ? shortText(outcome.before, 4000) : undefined,
+          after: outcome && outcome.after !== undefined ? shortText(outcome.after, 4000) : undefined,
           journalCount: task.journal.length,
         }
       })
@@ -1014,7 +1019,7 @@ export default {
       })
 
     reg('dshpd_verify',
-      'Verify a modification run: backup manifest integrity, modified files parse (package.json/manifest), no conflict markers, client bundle factory shape, and whether analysis findings worsened versus the pre-modification snapshot. Read-only checks; appends a verify entry to the durable journal.',
+      'Verify a modification run: backup manifest integrity, package.json parsing, modified files (no conflict markers), client bundle factory shape, and whether analysis findings worsened versus the pre-modification snapshot. Read-only checks; appends a verify entry to the durable journal.',
       {
         pluginPath: { type: 'string', description: 'Absolute path to the plugin project directory.' },
         backupId: { type: 'string', description: 'Optional backupId; defaults to the latest backup on disk.' },
@@ -1052,6 +1057,13 @@ export default {
         const harnessVersion = nonEmptyString(args.harnessVersion) || nonEmptyString(process.env.DSH_VERSION)
         const scanned = await analyzePath(io, base, harnessVersion)
         const summary = analysisSummary(scanned.result)
+        if (scanned.model.pkgRaw !== null) {
+          checks.push({
+            id: 'PACKAGE_JSON_PARSE',
+            status: scanned.model.pkg === null ? 'FAIL' : 'PASS',
+            detail: scanned.model.pkg === null ? 'package.json is not valid JSON: ' + String(scanned.model.pkgError) : 'package.json parses',
+          })
+        }
         const before = isPlainObject(manifest.analysis) ? manifest.analysis : null
         if (before !== null && typeof before.blockers === 'number') {
           const worsened = summary.blockers > before.blockers || summary.criticals > before.criticals
