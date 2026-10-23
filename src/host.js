@@ -347,6 +347,13 @@ async function collectModel(io, pluginPath, harnessVersion) {
     }
   }
   const clientBundleMtime = await mtimeOf(io, clientBundlePath === null ? defaultClientBundlePath : clientBundlePath)
+  const sourceText = sourceFiles.map((file) => (isPlainObject(file) && typeof file.content === 'string' ? file.content : '')).join('\n')
+  const toolNames = []
+  const toolPattern = /ctx\s*\.\s*tools\s*\.\s*register\s*\(\s*\{[\s\S]{0,500}?name\s*:\s*['"]([^'"]+)['"]/g
+  for (const match of sourceText.matchAll(toolPattern)) {
+    if (!toolNames.includes(match[1])) toolNames.push(match[1])
+  }
+  const hasConfig = /export\s+const\s+Config\b|\bctx\s*\.\s*settings\b/.test(sourceText)
   const hasTests = topLevel.some((entry) => entry.type === 'directory' && /^(?:tests?|__tests__)$/.test(entry.name))
     || (isPlainObject(pkg) && isPlainObject(pkg.scripts) && typeof pkg.scripts.test === 'string')
   const names = new Set(topLevel.map((entry) => entry.name.toLowerCase()))
@@ -370,6 +377,8 @@ async function collectModel(io, pluginPath, harnessVersion) {
     clientSourceFiles,
     clientSourceMtimeMax,
     clientBundleMtime,
+    toolNames,
+    hasConfig,
     iconExists,
     iconBytes,
     iconExt,
@@ -861,11 +870,12 @@ export default {
       { concurrencySafe: true })
 
     reg('dshpd_design',
-      'Generate a design.md draft for adapting a plugin: official-contract summary, findings by severity, actionable migration IDs, and a two-phase modification plan skeleton. Writes to <pluginPath>/.dsh-plugin-design/design.md and never overwrites unless mode=overwrite (mode=version writes design.vN.md). This tool never edits plugin sources.',
+      'Generate a design.md draft for adapting or developing a plugin: official-contract summary, findings by severity, actionable migration IDs, a two-phase modification plan, and a UI proposal. When the target has no client half, the design adds a concrete UI suggestion (entry, text wireframe, data plan, implementation checklist) and returns it so the model can describe the proposed UI to the user before implementation. Writes to <pluginPath>/.dsh-plugin-design/design.md (and a design.meta.json sidecar) and never overwrites unless mode=overwrite (mode=version writes design.vN.md). This tool never edits plugin sources.',
       {
         pluginPath: { type: 'string', description: 'Absolute path to the plugin project directory.' },
         mode: { type: 'string', enum: ['create', 'version', 'overwrite'], description: 'create (default, refuse if exists) | version (write next design.vN.md) | overwrite.' },
         harnessVersion: { type: 'string', description: 'Optional running DSH version for engines.dsh evaluation.' },
+        ui: { type: 'string', enum: ['auto', 'off'], description: 'auto (default): propose a UI when the plugin has no client half; off: never add UI proposal/recovery sections.' },
       },
       ['pluginPath'],
       async (args, exec) => {
@@ -888,13 +898,35 @@ export default {
         }
 
         const harnessVersion = nonEmptyString(args.harnessVersion) || nonEmptyString(process.env.DSH_VERSION)
-        const { result } = await analyzePath(ioFor(exec), args.pluginPath, harnessVersion)
-        const template = buildDesignTemplate(args.pluginPath, result)
-        await writeText(pathJoin(directory, designName), template, exec)
+        const { model, result } = await analyzePath(ioFor(exec), args.pluginPath, harnessVersion)
+        const uiMode = args.ui === 'off' ? 'off' : 'auto'
+        const uiProposal = uiMode === 'off'
+          ? { disabled: true, proposed: false, reason: 'ui=off', summary: '按调用方要求不生成 UI 方案。' }
+          : buildUiProposal(model, result)
+        const template = buildDesignTemplate(args.pluginPath, result, { uiProposal })
+        const designPath = pathJoin(directory, designName)
+        await writeText(designPath, template, exec)
+        const designMetaPath = pathJoin(directory, 'design.meta.json')
+        const designMeta = {
+          version: 1,
+          pluginPath: args.pluginPath,
+          designPath,
+          createdAt: new Date().toISOString(),
+          ui: {
+            expected: uiProposal.disabled === true ? false : Boolean(uiProposal.proposed || result.official.client.declared),
+            proposed: uiProposal.proposed === true,
+            formFactor: uiProposal.formFactor || null,
+            title: uiProposal.title || null,
+            entry: uiProposal.entry || null,
+          },
+        }
+        await writeText(designMetaPath, JSON.stringify(designMeta, null, 2) + '\n', exec)
         return {
           wrote: true,
-          designPath: pathJoin(directory, designName),
+          designPath,
+          designMetaPath,
           mode,
+          ui: uiProposal,
           issueCount: result.issues.length,
           overall: result.overall,
           migrations: result.migrations.map((migration) => migration.id),
@@ -1198,6 +1230,8 @@ export default {
           backupId = latest[0].backupId
         }
         const manifest = await readBackupManifest(base, backupId, exec)
+        const designMetaRaw = await tryReadText(pathJoin(base, STATE_DIR, 'design.meta.json'), exec)
+        const designMeta = safeParseJson(designMetaRaw)
         const checks = []
         if (manifest === null) {
           checks.push({ id: 'BACKUP_MANIFEST', status: 'FAIL', detail: 'backup manifest not readable' })
@@ -1271,7 +1305,15 @@ export default {
             })
           }
         }
-
+        if (designMeta && isPlainObject(designMeta.ui) && designMeta.ui.expected === true) {
+          checks.push({
+            id: 'UI_EXPECTED',
+            status: official.client.declared ? 'PASS' : 'FAIL',
+            detail: official.client.declared
+              ? 'design 要求 UI；client 半体已声明（' + String(designMeta.ui.entry || 'settings.section') + '）'
+              : 'design 包含 UI 方案，但插件仍没有 dsh.client：UI 未实现',
+          })
+        }
         const journal = await readJournal(base, 500, exec)
         const applied = journal.filter((entry) => entry && entry.backupId === backupId && entry.kind === 'apply')
         const latestApply = new Map()
@@ -1308,7 +1350,7 @@ export default {
         } catch (error) {
           journalWarning = messageOf(error)
         }
-        return { ok, pluginPath: base, backupId, checks, analysis: summary, official: scanned.result.official, ui, journalWarning }
+        return { ok, pluginPath: base, backupId, checks, analysis: summary, official: scanned.result.official, ui, designMeta, journalWarning }
       },
       { concurrencySafe: false })
 
@@ -1525,7 +1567,74 @@ export default {
 // Pure helpers used by the plugin entry
 // ---------------------------------------------------------------------------
 
-function buildDesignTemplate(pluginPath, result) {
+function buildUiProposal(model, result) {
+  const official = result.official
+  const pkg = isPlainObject(model.pkg) ? model.pkg : {}
+  const name = nonEmptyString(pkg.name) || pathBasename(model.pluginPath)
+  if (official.client.declared) {
+    return {
+      proposed: false,
+      reason: '插件已有 client 半体；design 使用“UI 恢复与验证”章节',
+      formFactor: official.client.uiSlots.length > 0 ? official.client.uiSlots[0] : 'settings.section',
+      title: name,
+      entry: official.client.uiSlots.length > 0 ? official.client.uiSlots[0] : 'settings.section',
+      wireframe: null,
+      summary: '已有 UI：按 CLIENT_BUILD_STALE / CLIENT_ROUTE_MISSING / CLIENT_NO_UI_SLOT 等检查恢复。',
+    }
+  }
+  const description = nonEmptyString(pkg.description) || ''
+  const shortDescription = description.split(/[。\n]/)[0].slice(0, 60)
+  const tools = Array.isArray(model.toolNames) ? model.toolNames.slice(0, 6) : []
+  const hasConfig = model.hasConfig === true
+  const title = name + ' 设置'
+  const version = nonEmptyString(pkg.version) || '0.1.0'
+  const wireframe = [
+    '┌──────────────────────────────┐',
+    '│ ' + title.padEnd(24, ' ') + ' v' + version + ' │',
+    '│ 状态：运行中 / 未配置         │',
+    '├──────────────────────────────┤',
+    hasConfig ? '│ 配置区：字段 A [____]        │' : '│ 能力区：' + (tools[0] || '插件能力').slice(0, 20).padEnd(20, ' ') + ' │',
+    hasConfig ? '│         字段 B [x]           │' : '│ 最近结果：...                 │',
+    '├──────────────────────────────┤',
+    '│ [保存] [重载] [查看最近结果] │',
+    '└──────────────────────────────┘',
+  ].join('\n')
+  const sections = [
+    '顶部状态卡：运行状态、版本、兼容范围（engines.dsh）',
+    hasConfig ? '配置区：按 Host Config 字段生成表单，保存后热更新' : '能力区：列出工具/能力与启用状态',
+    tools.length > 0 ? '最近结果：展示最近一次工具调用或输出摘要' : '操作区：启动 / 停止 / 重载等按钮',
+    '空状态与错误状态：未配置、加载失败、请求超时都要有可读提示',
+  ]
+  const dataPlan = [
+    'Host 半体：ctx.inject(["webServer"], ...) 注册 `/<包名>/status` 与 `/<包名>/config`（GET/POST），并在 handler 内返回 JSON',
+    '配置持久化优先走 Host settings / Config；纯前端状态才放 localStorage',
+    'Client 半体：factory 里 fetch 这些路由；失败时显示错误文案，不要留空白页',
+  ]
+  const implementation = [
+    'package.json 增加 `dsh.client.platform = "web"`、`exports["./client"]`，并把 `lib` 加入 `files`',
+    '新增 `src/client.js` 与构建脚本，产出 factory-form `lib/client.js`（id=包名，`exports.apply` / `exports.inject`）',
+    '增加 `build:client` / `prepare` 脚本；构建后 `lib/client.js` mtime 必须晚于 client 源码',
+    'client apply 中 `slots.inject("settings.section", () => slots.register({ name:"settings.section", id:包名, label:"' + title + '" }, Panel))`',
+    '刷新页面 → `dshpd_ui_check` 确认 `inGraph=true`、`buildStale=false` → 再 `dshpd_verify`',
+  ]
+  return {
+    proposed: true,
+    reason: '插件当前没有 dsh.client / UI 半体',
+    formFactor: 'settings.section',
+    title,
+    entry: 'settings.section',
+    wireframe,
+    sections,
+    dataPlan,
+    implementation,
+    summary: '建议为 ' + name + ' 增加「设置 → ' + title + '」页面：顶部状态、'
+      + (hasConfig ? '配置表单' : '能力/启用状态') + '、' + (tools.length > 0 ? '最近结果' : '操作按钮')
+      + '；数据由 Host 路由提供，client 通过 settings.section 注册。'
+      + (shortDescription ? '（插件说明：' + shortDescription + '）' : ''),
+  }
+}
+
+function buildDesignTemplate(pluginPath, result, options) {
   const { official, issues, migrations } = result
   const lines = []
   lines.push('# dsh plugin design — design.md')
@@ -1569,6 +1678,15 @@ function buildDesignTemplate(pluginPath, result) {
   lines.push('## 5. Modification Plan')
   lines.push('')
   lines.push('（逐项 M001/M002/...：ID、Reason、File、Before、After、Risk、Validation、Rollback；只改目标插件源码，不修改 Core。）')
+  if (options && options.uiProposal && options.uiProposal.proposed) {
+    lines.push('')
+    lines.push('UI 实施项（用户确认 UI 方案后执行）：')
+    lines.push('- M-UI-1：package.json 增加 `dsh.client` / `exports["./client"]` / `files`')
+    lines.push('- M-UI-2：新增 `src/client.js` 与构建脚本，产出 factory-form `lib/client.js`')
+    lines.push('- M-UI-3：Host 增加状态/配置路由（`ctx.inject(["webServer"], ...)`）')
+    lines.push('- M-UI-4：client 注册 `settings.section`（或 design 中确定的其它座位）')
+    lines.push('- M-UI-5：重新构建 → 刷新 → `dshpd_ui_check` → `dshpd_verify`')
+  }
   if (migrations.length > 0) {
     lines.push('')
     lines.push('可直接由 `dshpd_migrate` 执行的清单迁移：')
@@ -1576,7 +1694,31 @@ function buildDesignTemplate(pluginPath, result) {
   }
   lines.push('')
   let sectionNumber = 6
-  if (official.client.declared) {
+  const uiProposal = options && options.uiProposal ? options.uiProposal : null
+  if (uiProposal && uiProposal.proposed) {
+    lines.push('## ' + sectionNumber + '. UI 方案建议（待用户确认）')
+    sectionNumber += 1
+    lines.push('')
+    lines.push('- 当前插件没有 `dsh.client` / UI 半体。建议新增「' + uiProposal.title + '」页面，入口：`' + uiProposal.entry + '`。')
+    lines.push('- 说明：' + uiProposal.summary)
+    lines.push('- 大致样貌（文字线框，最终视觉可按 Harness 主题调整）：')
+    lines.push('')
+    lines.push('```text')
+    for (const line of String(uiProposal.wireframe || '').split('\n')) lines.push(line)
+    lines.push('```')
+    lines.push('')
+    lines.push('页面区块：')
+    for (const section of uiProposal.sections || []) lines.push('- ' + section)
+    lines.push('')
+    lines.push('数据与交互：')
+    for (const item of uiProposal.dataPlan || []) lines.push('- ' + item)
+    lines.push('')
+    lines.push('实现清单：')
+    for (const item of uiProposal.implementation || []) lines.push('- ' + item)
+    lines.push('')
+    lines.push('> 用户确认方式：如果认可本 UI 方案，就把它转为修改计划里的 M-UI-* 项并实施；如果不需要 UI，明确告诉 Agent“不做 UI”，在 approve 前删除本节，后续不要新增 client 半体。')
+    lines.push('')
+  } else if (official.client.declared && (!uiProposal || uiProposal.disabled !== true)) {
     lines.push('## ' + sectionNumber + '. UI 恢复与验证（client 插件必做）')
     sectionNumber += 1
     lines.push('')

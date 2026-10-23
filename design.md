@@ -1,6 +1,6 @@
 # dsh plugin design — 设计自述
 
-本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.2.2`，对应顶层设计文档第 53 节的最终交付物。
+本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.2.3`，对应顶层设计文档第 53 节的最终交付物。
 
 ## 定位
 
@@ -67,6 +67,19 @@ dsh-plugin-design/
 2. **技术信息（折叠）**：规则集与兼容范围、13 个工具分组、安装/升级命令、安全边界、非官方认证声明。
 3. **文案原则**：先说结果（“帮你检查并改好插件”），再说步骤（3 步 + 示例提示词），最后才出现 `engines.dsh`、factory bundle 等术语；不在首屏堆技术名词。
 
+## 无 UI 插件的 UI 提案（1.2.3）
+
+`dshpd_design` 默认 `ui: "auto"`；当目标插件没有 `dsh.client` 时，`buildUiProposal` 根据插件描述、已注册工具（`ctx.tools.register` 的 name）、是否已有 Config，生成一份可执行的 UI 提案：
+
+- 入口：默认 `settings.section`；标题 `<包名> 设置`。
+- 文字线框：顶部状态/版本、配置区或能力区、最近结果/操作、底部按钮。
+- 数据方案：Host `/<包名>/status`、`/<包名>/config`（`ctx.inject(['webServer'], ...)`）；配置持久化优先走 Host settings/Config。
+- 实现清单：`dsh.client` + `exports["./client"]` + factory bundle + `build:client` + `slots.inject` + 构建/刷新/`dshpd_ui_check`。
+- `design.md` 增加「UI 方案建议（待用户确认）」章节；工具返回 `ui.wireframe` / `ui.sections` / `ui.dataPlan` / `ui.summary`，Agent 先向用户描述大致样貌。
+- 同目录写 `design.meta.json`，记录 `ui.expected`；`dshpd_verify` 增加 `UI_EXPECTED` 检查，防止“design 写了 UI、实现时却没加 client 半体”。
+
+用户不需要 UI 时传 `ui: "off"`，或在审核阶段明确拒绝。
+
 ## 规则引擎（src/rules.js）
 
 纯函数、无 I/O；`host.js` 的 `collectModel` 先把插件目录读成模型，再交给 `analyzeModel`。这样规则可以单测，也能被 route（node:fs）与 tool（ctx.fs）共用。
@@ -103,7 +116,7 @@ dsh-plugin-design/
 
 ## 验证计划
 
-- **静态**：`npm test`（27 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、13 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
+- **静态**：`npm test`（28 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、无 UI 插件的 UI 提案、13 工具/3 路由、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
 - **运行时**：重启 dsh 后确认 13 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、`dshpd_ui_check` 能读到 `clientModules.graph()`、设置页扫描/分析返回 JSON。
 - **生命周期**：插件卸载后工具、路由、slot 全部消失（由 `ctx` 注册与 `ctx.effect` 保证）。
 - 完整的 DH-TP-SDK 认证矩阵（§26–§34）需在 dsh 运行时内由 `dshpd_analyze` + 人工验证完成，属启发式 + 手动范畴。

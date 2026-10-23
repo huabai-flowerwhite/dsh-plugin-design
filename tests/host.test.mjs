@@ -362,6 +362,28 @@ test('ui_check combines runtime client graph with static UI diagnostics', async 
   assert.ok(result.uiSlots.includes('settings.section'))
 })
 
+test('design proposes a UI for a plugin without a client half and verify expects it', async () => {
+  const harness = createHarness()
+  const work = copyFixture('legacy-plugin')
+  const design = await call(harness, 'dshpd_design', { pluginPath: work })
+  assert.equal(design.wrote, true)
+  assert.equal(design.ui.proposed, true)
+  assert.equal(design.ui.entry, 'settings.section')
+  assert.match(design.ui.wireframe, /┌/)
+  const markdown = readFileSync(design.designPath, 'utf8')
+  assert.match(markdown, /UI 方案建议/)
+  assert.match(markdown, /settings\.section/)
+  const meta = JSON.parse(readFileSync(design.designMetaPath, 'utf8'))
+  assert.equal(meta.ui.expected, true)
+  assert.equal(meta.ui.proposed, true)
+
+  const approval = await call(harness, 'dshpd_approve', { pluginPath: work, designPath: design.designPath })
+  await call(harness, 'dshpd_backup', { approvalToken: approval.approvalToken, files: [join(work, 'package.json')] })
+  const verify = await call(harness, 'dshpd_verify', { pluginPath: work })
+  assert.equal(verify.ok, false)
+  assert.ok(verify.checks.some((check) => check.id === 'UI_EXPECTED' && check.status === 'FAIL'))
+})
+
 test('settings routes answer info/analyze/discover over the wire contract', async () => {
   const harness = createHarness()
   const byPath = new Map(harness.routes.map((route) => [route.path, route]))
@@ -370,7 +392,7 @@ test('settings routes answer info/analyze/discover over the wire contract', asyn
   await byPath.get('/dsh-plugin-design/info').handler(makeRouteRequest('GET', '/dsh-plugin-design/info'), info)
   assert.equal(info.statusCode, 200)
   const infoJson = JSON.parse(info.body)
-  assert.equal(infoJson.version, '1.2.2')
+  assert.equal(infoJson.version, '1.2.3')
   assert.equal(infoJson.tools.length, 13)
 
   const analyze = makeRouteResponse()

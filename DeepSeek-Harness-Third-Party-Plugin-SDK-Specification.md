@@ -1,10 +1,12 @@
 # DeepSeek Harness 第三方插件开发 SDK / 规范
 
 **Document ID:** DH-TP-SDK  
-**Version:** 1.2.2  
+**Version:** 1.2.3  
 **Status:** 工程化第三方插件规范（非 DeepSeek 官方标准）  
 **对齐的 Harness 版本：** `@deepseek-ai/dsh` `0.2.1-rc.2`（Developer Preview）
 
+> 1.2.3 变更：跟随插件 1.2.3，对没有 client 半体的插件自动生成 UI 方案（`design.md` 章节 + `design.meta.json` + `UI_EXPECTED` 校验）。`dsh-plugin-design` 的 `docs/client-ui-recovery.md` 同时给出恢复与新建 UI 的步骤。
+>
 > 1.2.2 变更：跟随插件 1.2.2 增加 UI 恢复检查（`dshpd_ui_check`、构建过期、client 路由与座位规则）。`dsh-plugin-design` 的 `docs/client-ui-recovery.md` 给出排查顺序与构建契约。
 >
 > 1.2.1 变更：新增 §48「官方契约对齐（0.2.x 增补）」——`package.json.dsh` / `engines.dsh` / bundle / client factory bundle / 服务平面 / 0.2.0 移除项；§47 保留 0.1.x 落地记录，冲突时以 §48 与官方契约为准。
@@ -1650,4 +1652,4 @@ DeepSeek Harness 官方架构是本规范的技术依据；本规范是在其插
 
 ## 48.7 参考实现
 
-`dsh-plugin-design` 1.2.2 的规则集 `0.2.1` 实现了上述检查、受限清单迁移、持久化备份/journal、修改后校验与回滚；详细规则映射见其 `docs/official-plugin-contract-0.2.md`。Bronze/Silver/Gold、P0–P4、S0–S4 仍为本规范的工程化等级，不是 DeepSeek 官方认证。
+`dsh-plugin-design` 1.2.3 的规则集 `0.2.1` 实现了上述检查、受限清单迁移、持久化备份/journal、修改后校验与回滚；详细规则映射见其 `docs/official-plugin-contract-0.2.md`。Bronze/Silver/Gold、P0–P4、S0–S4 仍为本规范的工程化等级，不是 DeepSeek 官方认证。

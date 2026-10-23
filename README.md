@@ -76,16 +76,18 @@ Agent 会扫描插件、对照官方规范和 DH-TP-SDK，把 `design.md` 写到
 
 `design.md` 会列出：插件现状、发现的问题、要改哪些文件、每项怎么改、怎么验证。
 
+如果插件**没有 UI**，`design.md` 会额外生成「UI 方案建议」：入口（默认 `settings.section`）、文字线框、页面区块、数据/路由、实现清单。Agent 应先向你描述 UI 的大致样貌，确认后再开发。
+
 ### 第 2 步：你审核 `design.md`
 
-打开 `design.md` 看一遍。如果方案不合适，直接告诉 Agent 你的意见，让它更新 `design.md`，直到你满意。
+打开 `design.md` 看一遍，特别是有 UI 方案时确认入口、页面区块和交互是否符合预期。如果方案不合适，直接告诉 Agent 你的意见，让它更新 `design.md`，直到你满意。
 
 ### 第 3 步：确认后修改 / 规范 / 开发
 
 确认后输入：
 
 ```text
-design.md 我已确认。请按它修改 / 规范 / 开发 <插件>，
+design.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，
 完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。
 ```
 
@@ -115,7 +117,15 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 ## UI 恢复（client 插件重点）
 
-如果插件原来有设置页 / 悬浮层 / 背景，但 DSH 升级后不见了，先运行：
+### 插件原本没有 UI
+
+`dshpd_design` 默认 `ui: "auto"`：检测到插件没有 `dsh.client` 时，`design.md` 会自动生成「UI 方案建议」，并在返回结果里给出 `ui.wireframe` / `ui.sections` / `ui.dataPlan`。Agent 应先用一段话把 UI 的大致样貌告诉你（入口在哪、页面分几块、有哪些按钮/状态），你确认后再把它作为 M-UI-* 任务开发。
+
+如果明确不需要 UI，告诉 Agent“不做 UI”，或调用 `dshpd_design` 时传 `ui: "off"`。
+
+### 插件原本有 UI，但升级后消失
+
+先运行：
 
 ```text
 使用 dsh plugin design 检查 <插件路径> 的 UI，告诉我为什么没显示、要怎么修。
@@ -160,7 +170,7 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 | 分析 | `dshpd_inspect` | 读取单个插件的清单、patch、client、目录与源码清单（只读） |
 | 分析 | `dshpd_analyze` | 规则集 `0.2.1` 启发式扫描，输出问题、官方契约快照、可执行迁移、评分与结论 |
 | 分析 | `dshpd_ui_check` | 检查 UI 是否真的注册进运行中的 client graph，并报告构建过期、apply/inject、UI 座位与缺失路由 |
-| 分析 | `dshpd_design` | 生成 `design.md`（含契约快照、问题、迁移项、修改计划与 UI 恢复清单） |
+| 分析 | `dshpd_design` | 生成 `design.md`（含契约快照、问题、迁移项、修改计划；无 UI 时附 UI 方案，有 UI 时附恢复清单） |
 | 执行 | `dshpd_approve` | 你确认后开启审批门，签发 approvalToken |
 | 执行 | `dshpd_backup` | 快照待改文件（含 hash 与分析摘要，持久化） |
 | 执行 | `dshpd_apply` | 单文件字面量替换；三重校验 + 写前 hash 校验 + `dryRun` |
@@ -177,13 +187,14 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 - 设置页目前是说明 + 扫描/分析（`settings.section`）。如果以后要暴露**可持久化配置**，应迁移到插件配置卡片档位（`plugins.item` + `ctx.configForms` + Host 设置命名空间）。
 - 规则集版本与 Harness 版本解耦：`dshpd_analyze` 输出里会带 `ruleset.version`。
 
-## 1.2.2 更新要点
+## 1.2.3 更新要点
 
-- **UI 恢复能力**：新增 `dshpd_ui_check`，检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_design` 增加 UI 恢复清单，`dshpd_apply` 改 client 源码时提示重新构建。
+- **无 UI 插件的 UI 提案**：`dshpd_design` 默认 `ui: "auto"`，目标插件没有 `dsh.client` 时自动在 `design.md` 增加 UI 方案建议（入口、文字线框、页面区块、数据/路由、实现清单），并返回 `ui.wireframe` 供 Agent 先向用户描述大致样貌；`design.meta.json` 记录 `ui.expected`，`dshpd_verify` 用 `UI_EXPECTED` 检查是否真的实现。
+- **UI 恢复能力**：`dshpd_ui_check` 检查 `clientModules.graph()` 是否真的注册、client 源码是否比 bundle 新、bundle 是否导出 `apply`/`inject`、是否有已知 UI 座位、client fetch 是否缺少 Host 路由；`dshpd_design` 增加 UI 恢复清单，`dshpd_apply` 改 client 源码时提示重新构建。
 - 规则增强：新增 Host 入口、`dsh.client` 字段类型/自引用/基线模块、图标格式与 256 KiB 上限、`type: module`、npm `files` 漏发布 patch/client/icon 等检查。
 - 设置页文案重写：先讲“能帮你做什么”，再给 **3 步聊天框用法**；明确 **产出 `design.md` 后可以继续修改 / 规范 / 开发插件**。
 - README 重排为「安装 → 使用 → 原理 → 技术信息」，并补充设置页三个按钮的说明。
-- 版本号 `1.2.1` → `1.2.2`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
+- 版本号 `1.2.2` → `1.2.3`；`design.md`、`dsh.plugin.yaml`、规范文档同步。
 
 <details>
 <summary>1.2.0 主要更新（规则集 0.2.1、12 工具、持久化等）</summary>
@@ -218,7 +229,7 @@ dsh-plugin-design/
 │   ├── host.js                 # 13 个工具、持久化备份/journal、设置页只读路由
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 27 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
+└── tests/                      # 28 个规则/宿主/客户端/bundle 测试 + 3 个插件样本
 ```
 
 ## 测试

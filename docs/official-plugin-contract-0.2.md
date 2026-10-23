@@ -142,6 +142,12 @@ dsh plugin --profile web add ./my-plugin
 
 > 完整排查/构建指南见 [`client-ui-recovery.md`](client-ui-recovery.md)。
 
+### 插件原本没有 UI
+
+`dshpd_design` 默认 `ui: "auto"`：目标没有 `dsh.client` 时，`design.md` 增加「UI 方案建议（待用户确认）」——入口（默认 `settings.section`）、文字线框、页面区块、数据/路由、实现清单；工具结果返回 `ui.wireframe` / `ui.sections` / `ui.dataPlan` / `ui.summary`，Agent 应先向用户描述 UI 大致样貌。`design.meta.json` 记录 `ui.expected`，`dshpd_verify` 用 `UI_EXPECTED` 检查实现后是否真的有 `dsh.client`。不需要 UI 时传 `ui: "off"`。
+
+### 插件原本有 UI
+
 浏览器半体的 UI 不出现，通常不是单点问题，按下面顺序排查：
 
 1. **是否进入运行中的 client graph**：`dshpd_ui_check` 的 `runtime.inGraph`；为 false 时检查 Loader row 是否裸包名、`dsh.client`、`exports["./client"]`、`lib/client.js` 是否存在，然后重启/刷新。
@@ -176,6 +182,7 @@ dsh plugin --profile web add ./my-plugin
 | `CLIENT_EXTERNAL_UNLISTED` | MEDIUM | client | 加 `dsh.client.external` 或改 service |
 | `CLIENT_BUILD_STALE` | HIGH | client | 重新构建 `lib/client.js` 后刷新 |
 | `CLIENT_NO_BUILD_SCRIPT` | MEDIUM | client | 补 build/prepare 构建命令 |
+| `UI_EXPECTED`（verify） | — | client | design 要求 UI 但实现后仍无 `dsh.client` |
 | `CLIENT_BUNDLE_NO_APPLY` | HIGH | client | 构建出口补 `exports.apply` |
 | `CLIENT_BUNDLE_NO_INJECT` | MEDIUM | client | 补 `exports.inject` |
 | `CLIENT_NO_UI_SLOT` | INFO | client | 检查 slot 名称 / 是否本应有 UI |

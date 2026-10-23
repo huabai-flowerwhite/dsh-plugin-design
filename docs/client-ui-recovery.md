@@ -1,7 +1,17 @@
 # Client UI 恢复指南（DSH 0.1.5 → 0.2.1）
 
-> 适用：插件原来有设置页 / 悬浮层 / 背景 / 工具卡片，DSH 升级或修改后 UI 不再出现。
+> 适用：插件原来有设置页 / 悬浮层 / 背景 / 工具卡片，DSH 升级或修改后 UI 不再出现；也适用于给**原本没有 UI** 的插件新增 UI。
 > 工具：`dshpd_ui_check`（静态 + 运行中 client graph）、`dshpd_analyze`、`dshpd_verify`。
+
+## 0. 插件原本没有 UI
+
+`dshpd_design` 默认 `ui: "auto"`。检测到没有 `dsh.client` 时，它会：
+
+- 在 `design.md` 增加「UI 方案建议」：入口（默认 `settings.section`）、文字线框、页面区块、数据/路由、实现清单；
+- 在工具结果返回 `ui.wireframe` / `ui.sections` / `ui.dataPlan` / `ui.summary`，供 Agent 先向用户描述 UI 大致样貌；
+- 写入 `design.meta.json`（`ui.expected=true`）；后续 `dshpd_verify` 会检查 `dsh.client` 是否真的实现。
+
+如果不需要 UI，调用时传 `ui: "off"`，或在 design 审核阶段明确告诉 Agent “不做 UI”。
 
 ## 1. 先确认“运行中的页面到底有没有它”
 
