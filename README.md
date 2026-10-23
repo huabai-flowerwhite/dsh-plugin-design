@@ -119,7 +119,7 @@ approve 审批 → backup 备份 → apply/migrate 修改 → verify 校验 → 
 
 ### 插件原本没有 UI
 
-`dshpd_design` 默认 `ui: "auto"`：检测到插件没有 `dsh.client` 时，`design.md` 会自动生成「UI 方案建议」，并在返回结果里给出 `ui.wireframe` / `ui.sections` / `ui.dataPlan`。Agent 应先用一段话把 UI 的大致样貌告诉你（入口在哪、页面分几块、有哪些按钮/状态），你确认后再把它作为 M-UI-* 任务开发。
+`dshpd_design` 默认 `ui: "auto"`：检测到插件没有 `dsh.client` 时，`design.md` 会自动生成「UI 方案建议」，并在返回结果里给出 `ui.wireframe` / `ui.userMessage` / `ui.sections` / `ui.dataPlan`。Agent 应先用 `ui.userMessage` 把 UI 的大致样貌告诉你（入口在哪、页面分几块、有哪些按钮/状态），你确认后再把它作为 M-UI-* 任务开发。
 
 如果明确不需要 UI，告诉 Agent“不做 UI”，或调用 `dshpd_design` 时传 `ui: "off"`。
 

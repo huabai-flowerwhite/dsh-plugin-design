@@ -1631,6 +1631,10 @@ function buildUiProposal(model, result) {
       + (hasConfig ? '配置表单' : '能力/启用状态') + '、' + (tools.length > 0 ? '最近结果' : '操作按钮')
       + '；数据由 Host 路由提供，client 通过 settings.section 注册。'
       + (shortDescription ? '（插件说明：' + shortDescription + '）' : ''),
+    userMessage: '建议为 ' + name + ' 新增一个「设置 → ' + title + '」页面，入口在设置导航里。大致样貌：\n\n```text\n'
+      + wireframe + '\n```\n\n页面包含：' + sections.join('；') + '。\n\n'
+      + '实现方式：' + implementation.slice(0, 4).join('；') + '。\n\n'
+      + '如果你认可这个 UI 方案，我会按 design.md 里的 M-UI-* 项开发；如果不需要 UI，请直接说“不做 UI”。',
   }
 }
 

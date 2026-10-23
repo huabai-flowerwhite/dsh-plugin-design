@@ -370,6 +370,8 @@ test('design proposes a UI for a plugin without a client half and verify expects
   assert.equal(design.ui.proposed, true)
   assert.equal(design.ui.entry, 'settings.section')
   assert.match(design.ui.wireframe, /┌/)
+  assert.match(design.ui.userMessage, /设置/)
+  assert.match(design.ui.userMessage, /```text/)
   const markdown = readFileSync(design.designPath, 'utf8')
   assert.match(markdown, /UI 方案建议/)
   assert.match(markdown, /settings\.section/)

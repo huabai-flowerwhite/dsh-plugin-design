@@ -7,7 +7,7 @@
 ### Added
 
 - `dshpd_design` 新增 `ui: "auto" | "off"`（默认 auto）：目标没有 `dsh.client` 时，`design.md` 增加「UI 方案建议（待用户确认）」——入口、文字线框、页面区块、数据/路由、实现清单。
-- `buildUiProposal` 根据插件描述、`ctx.tools.register` 工具名、是否已有 Config 生成提案；工具结果返回 `ui.wireframe` / `ui.sections` / `ui.dataPlan` / `ui.summary`，Agent 先向用户描述 UI 大致样貌。
+- `buildUiProposal` 根据插件描述、`ctx.tools.register` 工具名、是否已有 Config 生成提案；工具结果返回 `ui.wireframe` / `ui.userMessage` / `ui.sections` / `ui.dataPlan` / `ui.summary`，Agent 可直接用 `ui.userMessage` 向用户描述 UI 大致样貌。
 - `design.meta.json` 记录 `ui.expected` / `ui.proposed` / `ui.entry`；`dshpd_verify` 新增 `UI_EXPECTED`：design 要求 UI 但实现后仍没有 `dsh.client` 时 FAIL。
 - 新增 [docs/client-ui-recovery.md](docs/client-ui-recovery.md) 的「插件原本没有 UI」章节。
 

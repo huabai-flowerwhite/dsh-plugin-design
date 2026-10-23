@@ -75,7 +75,7 @@ dsh-plugin-design/
 - 文字线框：顶部状态/版本、配置区或能力区、最近结果/操作、底部按钮。
 - 数据方案：Host `/<包名>/status`、`/<包名>/config`（`ctx.inject(['webServer'], ...)`）；配置持久化优先走 Host settings/Config。
 - 实现清单：`dsh.client` + `exports["./client"]` + factory bundle + `build:client` + `slots.inject` + 构建/刷新/`dshpd_ui_check`。
-- `design.md` 增加「UI 方案建议（待用户确认）」章节；工具返回 `ui.wireframe` / `ui.sections` / `ui.dataPlan` / `ui.summary`，Agent 先向用户描述大致样貌。
+- `design.md` 增加「UI 方案建议（待用户确认）」章节；工具返回 `ui.wireframe` / `ui.userMessage` / `ui.sections` / `ui.dataPlan` / `ui.summary`，Agent 先向用户描述大致样貌。
 - 同目录写 `design.meta.json`，记录 `ui.expected`；`dshpd_verify` 增加 `UI_EXPECTED` 检查，防止“design 写了 UI、实现时却没加 client 半体”。
 
 用户不需要 UI 时传 `ui: "off"`，或在审核阶段明确拒绝。
