@@ -1,61 +1,390 @@
-// dsh-plugin-design — Client half (Settings UI)
+// dsh-plugin-design — Client half source (factory body)
 //
-// 在「设置 → dsh plugin design」页展示本插件的使用方法。
-// 持久化包版本为纯静态说明（不含 Client→Host 发现列表，那需要 Remote 传输接入）。
+// This file is NOT imported by Node. scripts/build-client.mjs wraps it into
+// lib/client.js as the lazy-CJS factory required by the harness client module
+// system:
+//
+//   window.__ModuleLoader__.load({ id: '<package name>', factory: (require) => { ... } })
+//
+// The build replaces the version and harness placeholders below with
+// package.json values. Keep the body dependency-free except for the platform
+// `react` module: anything else would have to be declared under
+// dsh.client.external.
 
-export default {
-  apply(ctx) {
-    const slots = ctx.get('slots')
-    if (slots === undefined) return
+const React = require('react')
 
-    styles.insert(
-      '.dshpd-panel { font-family: inherit; padding: 4px 0; line-height: 1.6; }' +
-      '.dshpd-panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }' +
-      '.dshpd-panel h4 { margin: 14px 0 4px; font-size: 13px; font-weight: 600; }' +
-      '.dshpd-lead { opacity: 0.75; font-size: 13px; margin-bottom: 4px; }' +
-      '.dshpd-cmd { margin: 6px 0; padding: 10px; border: 1px dashed var(--color-border, #ccc); border-radius: 8px; background: var(--color-bg-secondary, #f5f5f5); font-size: 13px; white-space: pre-wrap; word-break: break-word; }' +
-      '.dshpd-step { font-size: 13px; margin: 2px 0; }' +
-      '.dshpd-step b { font-weight: 600; }' +
-      '.dshpd-tools { font-size: 12px; opacity: 0.85; margin: 4px 0; line-height: 1.7; }' +
-      '.dshpd-note { font-size: 12px; opacity: 0.7; margin-top: 10px; }'
-    )
+const VERSION = '__DSHPD_VERSION__'
+const HARNESS_RANGE = '__DSHPD_HARNESS__'
+const RULESET = '0.2.1'
+const TOOL_NAMES = [
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_design',
+  'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
+  'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
+]
 
-    const TOOLS = 'dshpd_discover · dshpd_inspect · dshpd_analyze · dshpd_design · dshpd_approve · dshpd_backup · dshpd_apply · dshpd_rollback · dshpd_status · dshpd_report'
-
-    function h(tag, props, children) {
-      return React.createElement(tag, props, ...(Array.isArray(children) ? children : [children]))
-    }
-
-    function Panel() {
-      return h('div', { className: 'dshpd-panel' }, [
-        h('h3', null, 'dsh plugin design'),
-        h('div', { className: 'dshpd-lead' }, 'DH-TP-SDK 第三方插件规范适配与自动修改元插件：发现、分析、生成 design.md，经你确认后逐项修改并可回滚。'),
-
-        h('h4', null, '使用方法（聊天框入口）'),
-        h('div', { className: 'dshpd-cmd' }, '使用dsh plugin design插件，输出对 <插件名> 插件进行规范修改的design.md文件，然后询问我意见后进行规范修改'),
-
-        h('h4', null, '两阶段工作流'),
-        h('div', { className: 'dshpd-step' }, [h('b', null, '阶段 1（只读分析）：'), 'discover → inspect → analyze → design（生成 design.md），此阶段绝不修改源码。']),
-        h('div', { className: 'dshpd-step' }, [h('b', null, '阶段 2（你确认后才修改）：'), 'approve（门控）→ backup（备份）→ apply（逐项原子替换）→ rollback / report。']),
-
-        h('h4', null, '安全边界'),
-        h('div', { className: 'dshpd-step' }, '分析先于修改、设计先于执行；未确认前不修改；修改前备份、失败可回滚；不修改 Core、不用 private API。'),
-
-        h('h4', null, '工具清单（10 个）'),
-        h('div', { className: 'dshpd-tools' }, TOOLS),
-
-        h('h4', null, '安装（持久化 preset）'),
-        h('div', { className: 'dshpd-step' }, '把整个 dsh-plugin-design/ 目录放到 $DSH_HOME/.agent-presets/dsh-plugin-design/，新建会话选择「dsh plugin design」preset 即拥有上述工具。'),
-
-        h('div', { className: 'dshpd-note' }, '说明：DH-TP-SDK 的 Bronze/Silver/Gold、P0–P4、S0–S4 为工程化规范等级，非 DeepSeek 官方认证。')
-      ])
-    }
-
-    slots.inject('settings.section', function () {
-      return slots.register(
-        { name: 'settings.section', id: 'dsh-plugin-design', order: 100, label: 'dsh plugin design' },
-        function () { return React.createElement(Panel, null) }
-      )
-    })
-  },
+const COLORS = {
+  border: 'var(--color-border, #d8d8d8)',
+  muted: 'var(--color-text-secondary, #6b7280)',
+  bg: 'var(--color-bg-secondary, #f7f7f8)',
+  primary: '#2563eb',
+  ok: '#15803d',
+  warn: '#b45309',
+  bad: '#b91c1c',
 }
+
+function h(tag, props) {
+  const children = Array.prototype.slice.call(arguments, 2)
+  return React.createElement(tag, props, children.length === 0 ? null : (children.length === 1 ? children[0] : children))
+}
+
+function panelStyle() {
+  return { fontFamily: 'inherit', padding: '4px 0', lineHeight: 1.6, fontSize: 13 }
+}
+
+function h3Style() {
+  return { margin: '0 0 6px', fontSize: 15, fontWeight: 600 }
+}
+
+function h4Style() {
+  return { margin: '16px 0 6px', fontSize: 13, fontWeight: 600 }
+}
+
+function leadStyle() {
+  return { opacity: 0.8, marginBottom: 4 }
+}
+
+function cmdStyle() {
+  return {
+    margin: '6px 0',
+    padding: '10px 12px',
+    border: '1px dashed ' + COLORS.border,
+    borderRadius: 8,
+    background: COLORS.bg,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    fontSize: 12,
+  }
+}
+
+function noteStyle() {
+  return { fontSize: 12, opacity: 0.72, marginTop: 10 }
+}
+
+function badgeStyle(tone) {
+  const color = tone === 'ok' ? COLORS.ok : tone === 'warn' ? COLORS.warn : tone === 'bad' ? COLORS.bad : COLORS.muted
+  return {
+    display: 'inline-block',
+    padding: '1px 7px',
+    marginRight: 6,
+    borderRadius: 999,
+    border: '1px solid ' + color,
+    color: color,
+    fontSize: 11,
+    lineHeight: '18px',
+    whiteSpace: 'nowrap',
+  }
+}
+
+function buttonStyle(primary) {
+  return {
+    border: primary ? '1px solid ' + COLORS.primary : '1px solid ' + COLORS.border,
+    background: primary ? COLORS.primary : 'transparent',
+    color: primary ? '#fff' : 'inherit',
+    borderRadius: 6,
+    padding: '5px 10px',
+    cursor: 'pointer',
+    fontSize: 12,
+    whiteSpace: 'nowrap',
+  }
+}
+
+function inputStyle() {
+  return {
+    flex: '1 1 auto',
+    minWidth: 0,
+    border: '1px solid ' + COLORS.border,
+    background: 'var(--color-bg-primary, #fff)',
+    color: 'inherit',
+    borderRadius: 6,
+    padding: '6px 9px',
+    fontSize: 12,
+  }
+}
+
+function rowStyle() {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '8px 10px',
+    border: '1px solid ' + COLORS.border,
+    borderRadius: 8,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  }
+}
+
+function nameStyle() {
+  return { fontWeight: 600, fontSize: 13 }
+}
+
+function pathStyle() {
+  return {
+    fontSize: 11,
+    opacity: 0.7,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '100%',
+  }
+}
+
+function postJson(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  }).then(function (response) {
+    return response.text().then(function (text) {
+      var data
+      try {
+        data = JSON.parse(text)
+      } catch (error) {
+        throw new Error('Host 返回了非 JSON 响应（路由可能未注册）：' + text.slice(0, 120))
+      }
+      if (!response.ok || data.ok === false) throw new Error((data && data.error) || ('HTTP ' + response.status))
+      return data
+    })
+  })
+}
+
+function verdictTone(overall) {
+  if (overall === 'BLOCKED') return 'bad'
+  if (overall === 'NEEDS_REVIEW') return 'warn'
+  if (overall === 'READY_TO_MODIFY') return 'ok'
+  return 'muted'
+}
+
+function FindingList(props) {
+  var issues = props.issues || []
+  if (issues.length === 0) return h('div', { style: { fontSize: 12, opacity: 0.7 } }, '未命中规则。')
+  var top = issues.slice(0, props.limit || 6)
+  return h('div', { style: { marginTop: 4 } }, top.map(function (issue) {
+    var tone = issue.severity === 'BLOCKER' || issue.severity === 'CRITICAL' ? 'bad' : issue.severity === 'HIGH' ? 'warn' : 'muted'
+    return h('div', { key: issue.id + ':' + (issue.file || ''), style: { fontSize: 12, margin: '2px 0' } }, [
+      h('span', { style: badgeStyle(tone) }, issue.severity),
+      h('span', null, issue.title + (issue.file ? '  ·  ' + issue.file : '')),
+    ])
+  })).concat(issues.length > top.length
+    ? [h('div', { key: 'more', style: { fontSize: 11, opacity: 0.65 } }, '… 另有 ' + (issues.length - top.length) + ' 条')]
+    : []).concat(props.truncated
+    ? [h('div', { key: 'truncated', style: { fontSize: 11, opacity: 0.65 } }, '（结果已截断，完整列表请让 Agent 调用 dshpd_analyze）')]
+    : [])
+}
+
+function PluginRow(props) {
+  var plugin = props.plugin
+  var analysis = props.analysis
+  var analyzing = props.analyzing
+  var tone = analysis ? verdictTone(analysis.overall) : 'muted'
+  var tags = [
+    plugin.bundle ? h('span', { style: badgeStyle('ok'), key: 'bundle' }, 'bundle') : null,
+    plugin.client ? h('span', { style: badgeStyle('ok'), key: 'client' }, 'client') : null,
+    plugin.enginesDsh ? h('span', { style: badgeStyle('muted'), key: 'engines' }, 'engines.dsh') : null,
+    plugin.hasManifest ? h('span', { style: badgeStyle('muted'), key: 'manifest' }, 'DH-TP-SDK') : null,
+  ].filter(Boolean)
+
+  return h('div', { style: { border: '1px solid ' + COLORS.border, borderRadius: 8, marginBottom: 8, padding: '8px 10px' } }, [
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, [
+      h('div', { style: { flex: '1 1 240px', minWidth: 0 } }, [
+        h('div', { style: nameStyle() }, plugin.packageName || plugin.name),
+        h('div', { style: pathStyle(), title: plugin.path }, plugin.path),
+      ]),
+      h('button', { style: buttonStyle(false), onClick: props.onAnalyze, disabled: analyzing }, analyzing ? '分析中…' : '分析'),
+      h('button', { style: buttonStyle(true), onClick: props.onPrompt }, '规范修改'),
+    ]),
+    tags.length > 0 ? h('div', { style: { marginTop: 4 } }, tags) : null,
+    analysis
+      ? h('div', { style: { marginTop: 6, borderTop: '1px dashed ' + COLORS.border, paddingTop: 6 } }, [
+          h('div', null, [
+            h('span', { style: badgeStyle(tone) }, analysis.overall),
+            h('span', { style: { fontSize: 12, opacity: 0.8 } },
+              'issues ' + analysis.issueCount + ' · B' + analysis.counts.BLOCKER + ' / C' + analysis.counts.CRITICAL + ' / H' + analysis.counts.HIGH + ' / M' + analysis.counts.MEDIUM +
+              (analysis.migrations && analysis.migrations.length > 0 ? ' · 可自动迁移 ' + analysis.migrations.length + ' 项' : '')),
+          ]),
+          h(FindingList, { issues: analysis.issues, truncated: analysis.issuesTruncated === true }),
+        ])
+      : null,
+  ])
+}
+
+function Panel(props) {
+  var getWorkspace = props && typeof props.getWorkspace === 'function' ? props.getWorkspace : function () { return null }
+  var rootState = React.useState('')
+  var root = rootState[0]
+  var setRoot = rootState[1]
+  var pluginsState = React.useState([])
+  var plugins = pluginsState[0]
+  var setPlugins = pluginsState[1]
+  var loadingState = React.useState(false)
+  var loading = loadingState[0]
+  var setLoading = loadingState[1]
+  var errorState = React.useState(null)
+  var error = errorState[0]
+  var setError = errorState[1]
+  var promptState = React.useState(null)
+  var prompt = promptState[0]
+  var setPrompt = promptState[1]
+  var analysesState = React.useState({})
+  var analyses = analysesState[0]
+  var setAnalyses = analysesState[1]
+  var analyzingState = React.useState({})
+  var analyzing = analyzingState[0]
+  var setAnalyzing = analyzingState[1]
+
+  function pickDirectory() {
+    var workspace = null
+    try {
+      workspace = getWorkspace()
+    } catch (error) {
+      workspace = null
+    }
+    if (!workspace || typeof workspace.pickDirectory !== 'function') {
+      setError('当前环境未提供目录选择器（uiWorkspace service 不可用），请在输入框手动粘贴路径。')
+      return
+    }
+    setError(null)
+    Promise.resolve(workspace.pickDirectory()).then(function (picked) {
+      if (typeof picked === 'string' && picked !== '') setRoot(picked)
+    }).catch(function (failure) {
+      setError('目录选择失败：' + String(failure && failure.message ? failure.message : failure) + '（可手动粘贴路径）')
+    })
+  }
+
+  function scan() {
+    var target = String(root || '').trim()
+    if (target === '') {
+      setError('请先选择或输入第三方插件库文件夹路径。')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setAnalyses({})
+    postJson('/dsh-plugin-design/discover', { root: target, maxDepth: 6 }).then(function (data) {
+      setPlugins((data && data.plugins) || [])
+      setLoading(false)
+    }).catch(function (failure) {
+      setError(String(failure && failure.message ? failure.message : failure))
+      setLoading(false)
+    })
+  }
+
+  function analyze(plugin) {
+    setAnalyzing(function (previous) {
+      var next = Object.assign({}, previous)
+      next[plugin.path] = true
+      return next
+    })
+    postJson('/dsh-plugin-design/analyze', { pluginPath: plugin.path }).then(function (data) {
+      setAnalyses(function (previous) {
+        var next = Object.assign({}, previous)
+        next[plugin.path] = data
+        return next
+      })
+    }).catch(function (failure) {
+      setError('分析失败：' + String(failure && failure.message ? failure.message : failure))
+    }).then(function () {
+      setAnalyzing(function (previous) {
+        var next = Object.assign({}, previous)
+        delete next[plugin.path]
+        return next
+      })
+    })
+  }
+
+  function requestPrompt(plugin) {
+    setPrompt('使用 dsh plugin design 插件，输出对 ' + plugin.path + ' 插件进行规范修改的 design.md 文件，先只做分析，然后询问我意见后再进行规范修改。')
+  }
+
+  return h('div', { style: panelStyle() }, [
+    h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' } }, [
+      h('h3', { style: h3Style() }, 'dsh plugin design'),
+      h('span', { style: badgeStyle('ok') }, 'v' + VERSION),
+      h('span', { style: badgeStyle('muted') }, 'ruleset ' + RULESET),
+      h('span', { style: badgeStyle('muted') }, 'Harness ' + HARNESS_RANGE),
+    ]),
+    h('div', { style: leadStyle() }, '面向 DSH 第三方插件的规范分析 / 迁移 / 校验元插件：发现插件，对照官方 0.2.x 插件契约与 DH-TP-SDK 做静态分析，生成 design.md，经你确认后逐项修改并可校验、回滚。'),
+
+    h('h4', { style: h4Style() }, '在聊天框使用'),
+    h('div', { style: cmdStyle() }, '使用 dsh plugin design 插件，输出对 <插件名> 插件进行规范修改的 design.md 文件，然后询问我意见后进行规范修改'),
+
+    h('h4', { style: h4Style() }, '两阶段工作流'),
+    h('div', null, [
+      h('div', null, [h('b', null, '阶段 1（只读）：'), 'discover → inspect → analyze → design（生成 design.md）']),
+      h('div', null, [h('b', null, '阶段 2（确认后）：'), 'approve → backup → apply / migrate → verify → rollback / report']),
+    ]),
+    h('div', { style: { fontSize: 12, opacity: 0.75, marginTop: 4 } }, 'apply/migrate 三重门控：approvalToken + backupId + 文件在备份清单内；文件在备份后被改动会拒绝写入。'),
+
+    h('h4', { style: h4Style() }, '发现并分析第三方插件'),
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
+      h('input', {
+        style: inputStyle(),
+        placeholder: '插件库文件夹，例如 E:\\creat\\DSH\\open',
+        value: root,
+        onChange: function (event) { setRoot(event.target.value) },
+        onKeyDown: function (event) { if (event.key === 'Enter') scan() },
+      }),
+      h('button', { style: buttonStyle(false), onClick: pickDirectory }, '选择文件夹'),
+      h('button', { style: buttonStyle(true), onClick: scan, disabled: loading }, loading ? '扫描中…' : '扫描'),
+    ]),
+    h('div', { style: { fontSize: 11, opacity: 0.65, marginTop: 4 } }, '扫描走 Host 的 /dsh-plugin-design/discover；「分析」按钮走 /analyze，均为只读。'),
+    plugins.length === 0
+      ? h('div', { style: { opacity: 0.7, padding: '8px 0' } }, loading ? '正在扫描…' : '尚未扫描，或该目录下没有含 package.json / dsh.plugin.yaml 的插件项目。')
+      : h('div', { style: { marginTop: 8 } }, plugins.map(function (plugin) {
+          return h(PluginRow, {
+            key: plugin.path,
+            plugin: plugin,
+            analysis: analyses[plugin.path] || null,
+            analyzing: analyzing[plugin.path] === true,
+            onAnalyze: function () { analyze(plugin) },
+            onPrompt: function () { requestPrompt(plugin) },
+          })
+        })),
+    prompt !== null
+      ? h('div', { style: { marginTop: 8, padding: 10, border: '1px dashed ' + COLORS.border, borderRadius: 8 } }, [
+          h('div', { style: nameStyle() }, '复制到聊天框执行：'),
+          h('div', { style: cmdStyle() }, prompt),
+        ])
+      : null,
+    error !== null ? h('div', { style: { color: COLORS.bad, marginTop: 8, fontSize: 12 } }, error) : null,
+
+    h('h4', { style: h4Style() }, '工具清单（12 个）'),
+    h('div', { style: { fontSize: 12, opacity: 0.85, lineHeight: 1.9 } }, TOOL_NAMES.join(' · ')),
+
+    h('h4', { style: h4Style() }, '安装 / 升级（官方 bundle 方式）'),
+    h('div', { style: cmdStyle() }, 'dsh plugin --profile web add <本目录或 npm 包名>\n# 升级：先 remove 再 add（HMR 下不允许覆盖安装）\ndsh plugin --profile web remove dsh-plugin-design\ndsh plugin --profile web add <本目录或 npm 包名>'),
+    h('div', { style: { fontSize: 12, opacity: 0.75 } }, '旧版没有 dsh CLI 时，可用仓库内 install.ps1 / install.sh 的 link 模式作为回退。'),
+
+    h('h4', { style: h4Style() }, '安全边界'),
+    h('div', null, '分析先于修改、设计先于执行；未确认不修改；修改前备份、失败可回滚；不修改 Core、不使用 private API。'),
+    h('div', { style: noteStyle() }, '说明：DH-TP-SDK 的 Bronze/Silver/Gold、P0–P4、S0–S4 为工程化规范等级，非 DeepSeek 官方认证。'),
+  ])
+}
+
+function apply(ctx) {
+  var slots = ctx && ctx.slots ? ctx.slots : (ctx && typeof ctx.get === 'function' ? ctx.get('slots') : null)
+  if (!slots || typeof slots.inject !== 'function') return
+  var getWorkspace = function () {
+    return ctx && typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : null
+  }
+  slots.inject('settings.section', function () {
+    return slots.register(
+      { name: 'settings.section', id: 'dsh-plugin-design', order: 100, label: 'dsh plugin design' },
+      function () { return h(Panel, { getWorkspace: getWorkspace }) },
+    )
+  })
+}
+
+exports.apply = apply
+exports.inject = ['slots']

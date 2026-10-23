@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="dsh plugin design">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1f2937"/>
+  <rect x="14" y="12" width="36" height="40" rx="6" fill="#f9fafb"/>
+  <rect x="14" y="12" width="36" height="10" rx="6" fill="#2563eb"/>
+  <rect x="14" y="18" width="36" height="4" fill="#2563eb"/>
+  <path d="M21 32l4 4 7-8" fill="none" stroke="#15803d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 43l4 4 7-8" fill="none" stroke="#b45309" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="36" y="32" width="9" height="3" rx="1.5" fill="#9ca3af"/>
+  <rect x="36" y="43" width="9" height="3" rx="1.5" fill="#9ca3af"/>
+</svg>

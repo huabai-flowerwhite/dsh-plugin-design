@@ -1,0 +1,30 @@
+{
+  "name": "modern-plugin",
+  "version": "2.0.0",
+  "description": "Modern third-party plugin fixture following the 0.2.x contract.",
+  "license": "MIT",
+  "icon": "assets/icon.svg",
+  "type": "module",
+  "main": "./src/index.js",
+  "engines": {
+    "dsh": ">=0.1.5-rc.1 <0.3.0",
+    "node": ">=22 <25"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

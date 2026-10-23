@@ -1,0 +1,9 @@
+# legacy plugin fixture: replaces a core row, which the ruleset must flag.
+- replace:
+    - id: tools
+      name: '@deepseek-ai/dsh-tools'
+
+# legacy manual insert row (not declared through dsh.bundle)
+- insert:
+    - id: legacy-plugin
+      name: 'legacy-plugin'

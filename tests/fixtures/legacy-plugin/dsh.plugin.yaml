@@ -1,0 +1,9 @@
+manifestVersion: 1
+
+plugin:
+  name: legacy-plugin
+  version: 0.1.0
+
+runtime:
+  node:
+    min: 22

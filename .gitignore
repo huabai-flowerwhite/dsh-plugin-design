@@ -1,6 +1,9 @@
 # 依赖
 node_modules/
 
+# 本插件在目标插件里生成的备份/设计目录
+.dsh-plugin-design/
+
 # 日志
 *.log
 npm-debug.log*

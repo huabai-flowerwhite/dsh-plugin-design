@@ -1,0 +1,3 @@
+- insert:
+    - id: removed-api-plugin
+      name: 'removed-api-plugin'

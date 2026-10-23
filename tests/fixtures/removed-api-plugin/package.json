@@ -1,0 +1,13 @@
+{
+  "name": "removed-api-plugin",
+  "version": "0.3.0",
+  "description": "Fixture still using APIs removed in 0.2.0.",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@deepseek-ai/dsh-invariants": "^0.1.5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./search/package.json": "./src/search/package.json"
+  }
+}

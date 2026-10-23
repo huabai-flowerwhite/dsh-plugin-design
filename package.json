@@ -1,11 +1,13 @@
 {
   "name": "dsh-plugin-design",
-  "version": "1.1.0",
-  "private": true,
+  "version": "1.2.0",
   "type": "module",
-  "description": "dsh plugin design — DH-TP-SDK 第三方插件规范适配与自动修改元插件",
+  "description": "dsh plugin design — DSH 第三方插件规范适配与自动修改元插件（官方 package.json.dsh 契约 0.2.x + DH-TP-SDK）",
   "license": "MIT",
+  "icon": "assets/icon.svg",
+  "main": "./src/index.js",
   "engines": {
+    "dsh": ">=0.1.5-rc.1 <0.3.0",
     "node": ">=22 <25"
   },
   "exports": {
@@ -14,6 +16,7 @@
     "./package.json": "./package.json"
   },
   "dsh": {
+    "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
@@ -22,10 +25,41 @@
     },
     "compatibility": {
       "apiLevel": 1,
-      "harness": ">=0.1.1-rc.2"
+      "harness": ">=0.1.5-rc.1 <0.3.0"
     }
   },
+  "files": [
+    "src",
+    "lib",
+    "scripts",
+    "assets",
+    "docs",
+    "tests",
+    "cordis.patch.yml",
+    "dsh.plugin.yaml",
+    "install.ps1",
+    "install.sh",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md",
+    "deepseek-harness-product-technical-framework.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huabai-flowerwhite/dsh-plugin-design.git"
+  },
+  "homepage": "https://github.com/huabai-flowerwhite/dsh-plugin-design#readme",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "plugin",
+    "compliance"
+  ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build:client": "node scripts/build-client.mjs",
+    "check:client": "node scripts/build-client.mjs --check"
   }
 }

@@ -1598,3 +1598,52 @@ DeepSeek Harness 官方架构是本规范的技术依据；本规范是在其插
 ## 47.4 边界
 
 本规范仍是**工程化规范**，Bronze/Silver/Gold、P0–P4、S0–S4 非 DeepSeek 官方认证；`dsh-plugin-design` 的 `dshpd_analyze` 为启发式静态扫描，非权威认证。
+
+---
+
+# 48. 官方契约对齐（0.2.x 增补）
+
+本节记录 2026-10 官方仓库 `dsh-v0.2.1-rc.2` 对第三方插件契约的调整。冲突时**以官方 `package.json.dsh` 为准**；本规范的 `dsh.plugin.yaml` 是附加工程化清单，Harness 运行时不读取。
+
+## 48.1 清单来源
+
+- 官方：`package.json` 的 `name` / `version` / `icon` / `engines` / `exports` / `dsh`。
+- `dsh.manifestVersion`（当前 1）、`dsh.bundle.patch`（字符串或有序数组）、`dsh.client`（`platform: "web"`、可选 `inject` / `immediately` / `external`）、`dsh.profile`。
+- 本规范的 `dsh.plugin.yaml` 继续用于权限/资源/生命周期/安全等级等工程化声明；缺失时应降级报告，而不是 BLOCKER。
+
+## 48.2 兼容性
+
+1. 有 `engines.dsh` 时单独决定兼容性，忽略 `@deepseek-ai/dsh*` peer。
+2. 无 `engines.dsh` 时回退 peer 范围；两者都没有则兼容性不可验证。
+3. `engines.dsh` 中出现 `workspace:` 直接判定不兼容；`engines` 非对象或 `engines.dsh` 非字符串会让清单不可读。
+4. 不满足时可逐版本豁免：`dsh plugin --profile <p> allow-version <pkg>@<ver> --dsh-version <runtime> --accept-risk`。
+
+## 48.3 安装
+
+- 官方命令：`dsh plugin --profile <p> add <spec>`；`--profile` 必须位于转发的 pnpm 参数之前。
+- 升级：先 `remove` 再 `add`；HMR 下对已安装包再次 `add` 会报 `already-installed`。
+- 安装成功以 `profile/package.json` 的 `dsh.profile.bundles` 增加包名为准。
+- 手写「node_modules 链接 + profile patch」仅作为无 CLI 回退；与 bundle 安装不能同时使用，否则双挂载。
+
+## 48.4 Client 半体
+
+- 声明 `dsh.client` 并导出 `exports["./client"]`；产物必须是 `window.__ModuleLoader__.load({ id, factory })` 的 lazy-CJS，`id` 等于包名。
+- 只允许平台基线模块与 `dsh.client.external` 中的精确 specifier；跨插件值导入应在构建期拒绝，改用 cordis service。
+- 浏览器半体只挂在「裸包名 row」上；子路径 row 不带 UI。
+- 0.2.0 起子路径插件不再读取 `<subpath>/package.json`，改用 locale 文件与 `<subpath>/icon` 导出。
+
+## 48.5 服务平面
+
+- `fs`、`sandboxPolicy` 等为 agent 平面服务；host composition 插件应在工具执行时从 `exec.agent.ctx.get(...)` 取，不要硬 `inject`。
+- `webServer` 为 host 平面服务；路由注册应放在 `ctx.inject(['webServer'], ...)` 中，避免 apply 早于服务就绪。
+- 工具注册必须声明 `output.schema` 与 `output.render`；`execute(args, exec)` 返回符合 schema 的 JSON 值；只读工具可声明 `isConcurrencySafe`。
+
+## 48.6 0.2.0 移除项（插件相关）
+
+- `@deepseek-ai/dsh-invariants`、所有 `<pkg>/invariant` 子路径、`ctx.invariants`。
+- 子路径插件的 `<subpath>/package.json` 展示清单。
+- `sdk-minimal` 中五个 invariant 行（`invariants` / `session-invariant` / `agent-invariant` / `scope-invariant` / `agent-loop-invariant`）。
+
+## 48.7 参考实现
+
+`dsh-plugin-design` 1.2.0 的规则集 `0.2.1` 实现了上述检查、受限清单迁移、持久化备份/journal、修改后校验与回滚；详细规则映射见其 `docs/official-plugin-contract-0.2.md`。Bronze/Silver/Gold、P0–P4、S0–S4 仍为本规范的工程化等级，不是 DeepSeek 官方认证。

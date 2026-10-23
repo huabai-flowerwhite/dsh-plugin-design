@@ -1,0 +1,9 @@
+{
+  "name": "legacy-plugin",
+  "version": "0.1.0",
+  "description": "Legacy third-party plugin fixture (pre-0.2 contract).",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/smoke.test.js"
+  }
+}

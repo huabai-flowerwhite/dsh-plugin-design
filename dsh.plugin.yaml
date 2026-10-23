@@ -3,15 +3,16 @@ manifestVersion: 1
 plugin:
   id: com.example.dsh.plugin-design
   name: dsh plugin design
-  version: 1.1.0
+  version: 1.2.0
   description: >-
-    DH-TP-SDK 第三方插件规范适配与自动修改元插件：发现、检查、静态分析、
-    生成 design.md、审批门控、备份/逐项修改/回滚，并提供 Settings UI。
+    DSH 第三方插件规范适配与自动修改元插件：发现、检查、静态分析（官方
+    package.json.dsh 契约 0.2.x + DH-TP-SDK）、生成 design.md、审批门控、
+    备份/逐项修改/清单迁移/校验/回滚，并提供 Settings UI。
 
 runtime:
   harness:
-    min: 0.1.1-rc.2
-    max: "<0.2.0"
+    min: 0.1.5-rc.1
+    max: "<0.3.0"
 
   node:
     min: 22
@@ -29,16 +30,23 @@ capabilities:
     - com.example.dsh.plugin-design.tool.dshpd_approve
     - com.example.dsh.plugin-design.tool.dshpd_backup
     - com.example.dsh.plugin-design.tool.dshpd_apply
+    - com.example.dsh.plugin-design.tool.dshpd_migrate
+    - com.example.dsh.plugin-design.tool.dshpd_verify
     - com.example.dsh.plugin-design.tool.dshpd_rollback
     - com.example.dsh.plugin-design.tool.dshpd_status
     - com.example.dsh.plugin-design.tool.dshpd_report
+    - com.example.dsh.plugin-design.route.info
     - com.example.dsh.plugin-design.route.discover
+    - com.example.dsh.plugin-design.route.analyze
+    - com.example.dsh.plugin-design.slot.settings.section
 
   consumes:
     - ctx.tools
     - ctx.fs
     - ctx.webServer
     - ctx.sandboxPolicy
+    - ctx.slots
+    - ctx.uiWorkspace
 
 events:
   subscribes: []
@@ -70,7 +78,7 @@ resources:
   maxMemoryMb: 512
   maxOutputBytes: 1048576
   maxProcesses: 1
-  maxConcurrentTasks: 8
+  maxConcurrentTasks: 12
 
 lifecycle:
   unloadable: true

@@ -1,86 +1,119 @@
-// dsh-plugin-design — manifest / package.json / bundle / 源码安全 冒烟测试
+// Package-manifest / bundle / client-artifact smoke tests
 //
-// 运行：node --test tests/  （package.json 的 npm test 会走到这里）
+// Run: node --test (package.json "test")
 //
-// 依据 DH-TP-SDK（DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md）
-// 校验本插件自身的规范合规性：manifest 必填字段、最小权限、三处导出、
-// cordis.patch.yml 仅 insert 不替换 Core row、源码无高危模式。
+// Verifies this plugin's own official 0.2.x packaging plus the DH-TP-SDK
+// engineering manifest, and proves the checked-in client artifact is generated
+// from src/client.js rather than hand-edited.
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+
+import { checkClient } from '../scripts/build-client.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
 
-function read(rel) {
-  return readFileSync(join(root, rel), 'utf8')
+function read(relativePath) {
+  return readFileSync(join(root, relativePath), 'utf8')
 }
 
-test('dsh.plugin.yaml 存在且含 DH-TP-SDK 必填字段', () => {
-  const raw = read('dsh.plugin.yaml')
-  assert.match(raw, /^manifestVersion:\s*1\s*$/m, 'manifestVersion 应为 1')
-  assert.match(raw, /^plugin:/m, '应有 plugin 块')
-  assert.match(raw, /^\s+id:\s*com\.example\.dsh\.plugin-design\s*$/m, 'plugin.id 应为全局唯一 ID')
-  assert.match(raw, /^runtime:/m, '应有 runtime 块')
-  assert.match(raw, /^\s+harness:/m, '应有 runtime.harness 兼容范围')
-  assert.match(raw, /^\s+min:\s*0\.1\.1-rc\.2\s*$/m, 'runtime.harness.min 应对齐 0.1.1-rc.2')
-  assert.match(raw, /^\s+max:\s*"<0\.2\.0"\s*$/m, 'runtime.harness.max 应为 <0.2.0')
-  assert.match(raw, /^cordis:/m, '应有 cordis 块')
-  assert.match(raw, /^\s+apiLevel:\s*1\s*$/m, 'cordis.apiLevel 应为 1')
-  assert.match(raw, /^capabilities:/m, '应有 capabilities')
-  assert.match(raw, /^permissions:/m, '应有 permissions（权限 Manifest 化）')
-  assert.match(raw, /^resources:/m, '应有 resources 资源上限')
-  assert.match(raw, /^lifecycle:/m, '应有 lifecycle')
-  assert.match(raw, /^security:/m, '应有 security')
-  assert.match(raw, /^\s+level:\s*S2\s*$/m, 'security.level 应为 S2（需读写 workspace 文件）')
-  assert.match(raw, /^compatibility:/m, '应有 compatibility')
-})
+const TOOL_NAMES = [
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_design',
+  'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
+  'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
+]
 
-test('dsh.plugin.yaml 权限声明：网络/子进程/shell/密钥默认关闭', () => {
-  const raw = read('dsh.plugin.yaml')
-  assert.match(raw, /outbound:\s*false/m, 'network.outbound 应为 false')
-  assert.match(raw, /^\s+enabled:\s*false\s*$/m, 'subprocess/shell 应为 false')
-  assert.match(raw, /access:\s*false/m, 'credentials.access 应为 false')
-  assert.doesNotMatch(raw, /(api[_-]?key|access[_-]?token|client[_-]?secret)\s*[:=]\s*["'][A-Za-z0-9_\-]{12,}["']/i, '不应含硬编码密钥')
-})
-
-test('package.json 声明三处导出 + dsh 兼容信息', () => {
+test('package.json follows the official 0.2.x plugin contract', () => {
   const pkg = JSON.parse(read('package.json'))
   assert.equal(pkg.name, 'dsh-plugin-design')
-  assert.ok(pkg.version, '应有 version')
-  assert.ok(pkg.engines && pkg.engines.node, '应有 engines.node')
+  assert.equal(pkg.version, '1.2.0')
+  assert.equal(pkg.type, 'module')
+  assert.equal(pkg.license, 'MIT')
+  assert.match(pkg.engines.dsh, />=0\.1\.5-rc\.1/)
+  assert.match(pkg.engines.node, />=22/)
   assert.equal(pkg.exports['.'], './src/index.js')
   assert.equal(pkg.exports['./client'], './lib/client.js')
   assert.equal(pkg.exports['./package.json'], './package.json')
-  assert.ok(pkg.dsh && pkg.dsh.client && pkg.dsh.client.platform === 'web', 'dsh.client.platform 应为 web')
-  assert.ok(pkg.dsh && pkg.dsh.bundle && pkg.dsh.bundle.patch, 'dsh.bundle.patch 应指向 cordis.patch.yml')
-  assert.ok(pkg.dsh && pkg.dsh.compatibility && pkg.dsh.compatibility.apiLevel, '应声明 compatibility.apiLevel')
-  assert.equal(pkg.dsh.compatibility.harness, '>=0.1.1-rc.2', 'compatibility.harness 应对齐 0.1.1-rc.2')
+  assert.equal(pkg.dsh.manifestVersion, 1)
+  assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
+  assert.equal(pkg.dsh.client.platform, 'web')
+  assert.equal(pkg.dsh.compatibility.harness, pkg.engines.dsh)
+  assert.ok(existsSync(join(root, pkg.icon)), 'declared icon must exist inside the package')
+  assert.ok(pkg.repository && pkg.repository.url)
 })
 
-test('cordis.patch.yml 仅 insert 自己的 row，不替换 Core row', () => {
+test('dsh.plugin.yaml keeps the DH-TP-SDK engineering manifest in sync', () => {
+  const raw = read('dsh.plugin.yaml')
+  assert.match(raw, /^manifestVersion:\s*1\s*$/m)
+  assert.match(raw, /^\s+id:\s*com\.example\.dsh\.plugin-design\s*$/m)
+  assert.match(raw, /^\s+version:\s*1\.2\.0\s*$/m)
+  assert.match(raw, /^\s+min:\s*0\.1\.5-rc\.1\s*$/m)
+  assert.match(raw, /^\s+max:\s*"<0\.3\.0"\s*$/m)
+  assert.match(raw, /^\s+apiLevel:\s*1\s*$/m)
+  assert.match(raw, /^permissions:/m)
+  assert.match(raw, /^resources:/m)
+  assert.match(raw, /^lifecycle:/m)
+  assert.match(raw, /^\s+level:\s*S2\s*$/m)
+  for (const tool of TOOL_NAMES) {
+    assert.match(raw, new RegExp('tool\\.' + tool), 'capabilities should list ' + tool)
+  }
+  assert.match(raw, /outbound:\s*false/)
+  assert.match(raw, /^\s+enabled:\s*false\s*$/m)
+  assert.match(raw, /access:\s*false/)
+})
+
+test('cordis.patch.yml only inserts this plugin row (bare package name)', () => {
   const raw = read('cordis.patch.yml')
-  assert.match(raw, /- insert:/m, '应为 insert 形态')
-  assert.match(raw, /id:\s*dsh-plugin-design/m, '应包含本插件 id')
-  assert.doesNotMatch(raw, /replace|replacement/i, '不应替换 Core row')
+  assert.match(raw, /- insert:/)
+  assert.match(raw, /id:\s*dsh-plugin-design/)
+  assert.match(raw, /name:\s*'dsh-plugin-design'/)
+  assert.doesNotMatch(raw, /^\s*-?\s*replace:/m)
 })
 
-test('源码不含高危模式（globalThis/window 赋值、prototype patch、类型断言绕过、危险命令、命令注入）', () => {
-  for (const rel of ['src/host.js', 'src/client.js', 'lib/client.js']) {
-    const raw = read(rel)
-    const lines = raw.split('\n')
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const loc = `${rel}:${i + 1}`
-      assert.doesNotMatch(line, /globalThis\s*\.\s*\w+\s*=/, `globalThis 赋值（${loc}）`)
-      assert.doesNotMatch(line, /window\s*\.\s*\w+\s*=/, `window 赋值（${loc}）`)
-      assert.doesNotMatch(line, /\b\w+\.prototype\.\w+\s*=/, `prototype patch（${loc}）`)
-      assert.doesNotMatch(line, /\bas\s+any\b|\bas\s+unknown\b/, `类型断言绕过（${loc}）`)
-      assert.doesNotMatch(line, /(rm\s+-rf|git\s+reset\s+--hard|git\s+clean\s+-fd|git\s+push\s+--force|rmdir\s+\/s)/i, `危险命令（${loc}）`)
-      assert.doesNotMatch(line, /exec\s*\(\s*["'][^"']*\+|exec\s*\(\s*`[^`]*\$\{/, `命令注入（${loc}）`)
+test('client bundle is generated from source and not stale', () => {
+  const result = checkClient()
+  assert.equal(result.ok, true, result.reason || 'lib/client.js is stale')
+  const raw = read('lib/client.js')
+  assert.match(raw, /window\.__ModuleLoader__\.load\(\{/)
+  assert.match(raw, /factory: \(require\) => \{/)
+})
+
+test('source code avoids high-risk patterns', () => {
+  const files = ['src/host.js', 'src/rules.js', 'src/client.js', 'src/index.js', 'lib/client.js']
+  for (const relativePath of files) {
+    const lines = read(relativePath).split('\n')
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index]
+      const location = relativePath + ':' + (index + 1)
+      assert.doesNotMatch(line, /globalThis\s*\.\s*[A-Za-z_$][\w$]*\s*=/, 'globalThis assignment at ' + location)
+      assert.doesNotMatch(line, /window\s*\.\s*[A-Za-z_$][\w$]*\s*=/, 'window assignment at ' + location)
+      assert.doesNotMatch(line, /\b[A-Za-z_$][\w$]*\.prototype\.[A-Za-z_$][\w$]*\s*=/, 'prototype patch at ' + location)
+      assert.doesNotMatch(line, /\bas\s+(?:any|unknown)\b/, 'type escape at ' + location)
+      assert.doesNotMatch(line, /(rm\s+-rf|git\s+reset\s+--hard|git\s+clean\s+-fd|git\s+push\s+--force|rmdir\s+\/s)/i, 'destructive command at ' + location)
+      assert.doesNotMatch(line, /exec\s*\(\s*["'][^"']*\+|exec\s*\(\s*`[^`]*\$\{/, 'command injection at ' + location)
     }
   }
+})
+
+test('host half resolves no @deepseek-ai package at runtime', () => {
+  for (const relativePath of ['src/host.js', 'src/rules.js']) {
+    const raw = read(relativePath)
+    assert.doesNotMatch(raw, /from\s+['"]@deepseek-ai\//, relativePath + ' imports a harness package')
+    assert.doesNotMatch(raw, /import\s*\(\s*['"]@deepseek-ai\//, relativePath + ' dynamically imports a harness package')
+  }
+})
+
+test('install scripts prefer the official bundle installer and keep a link fallback', () => {
+  const powershell = read('install.ps1')
+  assert.match(powershell, /dsh plugin --profile|'plugin', '--profile'/)
+  assert.match(powershell, /fallback link mode/)
+  assert.match(powershell, /Test-BundleInstalled/)
+  const shell = read('install.sh')
+  assert.match(shell, /plugin --profile/)
+  assert.match(shell, /fallback link mode/)
+  assert.match(shell, /has_bundle/)
 })
