@@ -90,6 +90,12 @@ fi
 
 if [ "$MODE" != "link" ]; then
     echo "[$PLUGIN_NAME] installing as an official bundle via: $DSH_BIN"
+    PROFILE_PATCH="$PROFILE_DIR/cordis.patch.yml"
+    if [ -f "$PROFILE_PATCH" ] && grep -q "id:[[:space:]]*$PLUGIN_NAME" "$PROFILE_PATCH"; then
+        echo "[$PLUGIN_NAME] the profile patch still contains a $PLUGIN_NAME row; bundle install plus that row would mount the plugin twice." >&2
+        echo "  Remove the row from $PROFILE_PATCH first, then re-run this script." >&2
+        exit 1
+    fi
     if has_bundle; then
         echo "[$PLUGIN_NAME] already listed in profile bundles; removing before re-adding (HMR refuses install-over-install)."
         "$DSH_BIN" plugin --profile "$PROFILE" remove "$PLUGIN_NAME" || true

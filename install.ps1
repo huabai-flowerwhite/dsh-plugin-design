@@ -73,6 +73,12 @@ if ($Mode -ne 'link' -and $null -eq $DshCli) {
 
 if ($Mode -ne 'link') {
     Write-Host "[$PluginName] installing as an official bundle via: $DshCli" -ForegroundColor Cyan
+    $ProfilePatch = Join-Path $ProfileDir 'cordis.patch.yml'
+    if ((Test-Path $ProfilePatch) -and ((Get-Content $ProfilePatch -Raw) -match "id:\s*$([regex]::Escape($PluginName))")) {
+        Write-Host "[$PluginName] the profile patch still contains a $PluginName row; bundle install plus that row would mount the plugin twice." -ForegroundColor Red
+        Write-Host "  Remove the row from $ProfilePatch first, then re-run this script." -ForegroundColor Red
+        exit 1
+    }
     if (Test-BundleInstalled) {
         Write-Host "[$PluginName] already listed in profile bundles; removing before re-adding (HMR refuses install-over-install)." -ForegroundColor Yellow
         Invoke-DshPlugin -Arguments @('plugin', '--profile', $Profile, 'remove', $PluginName) | Out-Null
