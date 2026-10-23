@@ -89,7 +89,11 @@ bash install.sh
 
 脚本检测到 `dsh` 时走官方安装；否则把包链接进 `$DSH_HOME/profiles/node_modules` 与 `profiles/<profile>/node_modules`（如存在），并向 profile `cordis.patch.yml` 追加一行 insert。脚本幂等，且会避免「bundle + patch 双挂载」。
 
+> 桌面端使用 `desktop` profile（由 Electron 托管，`dsh plugin --profile desktop` 会被拒绝）。要在桌面端设置页使用本插件，安装时指定 `-Profile desktop`（Windows）或 `--profile desktop`（Linux/macOS）走 link 模式；web 端仍用默认 `web`。
+
 装完后重启 dsh（或让 HMR 重载）并刷新页面：聊天框出现 12 个 `dshpd_*` 工具，「设置 → dsh plugin design」出现设置页。
+
+> 运行中新增挂载时，Host 半体可能立即生效；Client 半体需要刷新页面（Ctrl+R / Cmd+R）或重启应用，设置页才会出现在导航里。
 
 ## 目录结构
 
