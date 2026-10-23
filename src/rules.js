@@ -17,6 +17,7 @@ import {
   CLIENT_SERVICE_CATALOG,
   LEGACY_CLIENT_SERVICES,
   collectClientServiceRefs,
+  findEagerServiceLookups,
   findWorkspacesPickerMisuse,
 } from './services.js'
 
@@ -496,6 +497,7 @@ export function analyzeModel(model) {
       services: [],
       unknownServices: [],
       legacyServices: [],
+      eagerLookups: [],
       externals: client !== null ? stringArray(client.external) : [],
     },
     profile: profile !== null,
@@ -933,6 +935,19 @@ export function analyzeModel(model) {
         title: '把 workspaces 当成目录选择器（没有 pickDirectory）',
         detail: '`workspaces` 是 workspace controller（list/create/rename/delete），目录选择器在 `uiWorkspace.pickDirectory()`。'
           + '旧写法 `ctx.get("workspaces").pickDirectory()` 在 0.2.x 中不会弹窗。',
+        file: null,
+      })
+    }
+    for (const eager of findEagerServiceLookups(clientText)) {
+      official.client.eagerLookups.push(eager.service + ':' + eager.variable)
+      push({
+        id: 'CLIENT_SERVICE_EAGER_LOOKUP', severity: 'HIGH', category: 'client',
+        title: '在 apply/顶层过早缓存了非框架服务：' + eager.service,
+        detail: '`' + eager.variable + ' = ctx.get("' + eager.service + '")` 出现在 ' + eager.scope
+          + '；该服务由其他 client 插件异步激活，apply 早期可能还是 undefined，'
+          + '后面的 `typeof` 检查会把它固化成 null。改为点击/调用时重新 `ctx.get(...)`，'
+          + '或用 `ctx.inject(["' + eager.service + '"], cb)` 等待服务。'
+          + '（若这是延迟调用的 helper，静态作用域判断可能误报。）',
         file: null,
       })
     }

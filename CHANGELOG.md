@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.2 — 2026-10-23
+
+补齐“服务名对、取值时机错”这一类静默失效：apply 时取到 `undefined`，被 `typeof` 固化成 `null`。
+
+### Added
+
+- `CLIENT_SERVICE_EAGER_LOOKUP`（HIGH）：检测 apply/顶层 `const x = ctx.get('service')` 后在 400 字符内出现 `x && typeof x.` / `x || null` 的写法。
+- 框架服务白名单（`slots` / `loader` / `logger` / `effect` / `on` / `inject` 等）在 apply 时保证可用，不报。
+- 延迟 helper 不误报：`const pickDirectory = function () { const x = ctx.get(...) }`、`var get = function () { return ctx.get(...) }` 视为正解。
+- `official.client.eagerLookups`；`dshpd_ui_check` 返回 `eagerLookups`。
+- 双向测试：top-level/apply 应报，lazy helper/framework/uncached 不应报；总计 40。
+
+### Docs
+
+- `docs/service-catalog-0.2.1.md` 增加“取值时机”章节与正解示例。
+- README/contract 增加规则说明。
+
 ## 1.3.1 — 2026-10-23
 
 补齐“服务名存在但方法用错”这一类规则缺口：`workspaces.pickDirectory()` 是合法语法、运行时静默失效。

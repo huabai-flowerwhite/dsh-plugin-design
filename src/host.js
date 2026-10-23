@@ -891,6 +891,7 @@ export default {
           services: result === null ? [] : result.official.client.services,
           unknownServices: result === null ? [] : result.official.client.unknownServices,
           legacyServices: result === null ? [] : result.official.client.legacyServices,
+          eagerLookups: result === null ? [] : result.official.client.eagerLookups,
           issues: uiIssues,
           howToUse: [
             'runtime.inGraph=false：先看 rootCause。DESKTOP_PROFILE_NOT_MOUNTED 表示桌面版 patch 没挂载（web 挂载无效）；CLIENT_NOT_DISCOVERED_IN_GRAPH 表示已挂载但需重启/修清单。',

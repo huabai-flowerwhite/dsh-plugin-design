@@ -226,6 +226,8 @@ test('UI diagnostics flag stale bundles, removed styles API, missing routes and 
     "styles.insert('.x{}')",
     "const ws = ctx.get('workspaces')",
     'ws.pickDirectory()',
+    "const eagerUi = ctx.get('uiWorkspace')",
+    "const eagerPick = eagerUi && typeof eagerUi.pickDirectory === 'function' ? eagerUi.pickDirectory : null",
     "ctx.get('notARealService')",
     "fetch('/demo/missing')",
     "const node = React.createElement('div')",
@@ -275,6 +277,7 @@ test('UI diagnostics flag stale bundles, removed styles API, missing routes and 
     'CLIENT_BUILD_STALE', 'CLIENT_STYLES_SERVICE', 'CLIENT_REACT_MISSING',
     'CLIENT_BUNDLE_NO_APPLY', 'CLIENT_ROUTE_MISSING', 'WEBSERVER_NOT_INJECTED',
     'CLIENT_NO_BUILD_SCRIPT', 'CLIENT_WORKSPACES_PICKDIRECTORY', 'CLIENT_UNKNOWN_SERVICE',
+    'CLIENT_SERVICE_EAGER_LOOKUP',
   ]) {
     assert.ok(ids.includes(expected), 'missing finding ' + expected + '; got ' + ids.join(','))
   }

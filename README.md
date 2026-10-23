@@ -89,7 +89,7 @@ dsh-plugin-design/
 │   ├── profiles.js             # desktop/web profile 挂载、包解析、mount
 │   ├── rules.js                # 纯规则引擎（官方契约 + DH-TP-SDK + 源码扫描 + SemVer）
 │   └── client.js               # Client 半体源码（factory body）
-└── tests/                      # 37 个规则/宿主/客户端/bundle/部署/服务测试 + 3 个插件样本
+└── tests/                      # 40 个规则/宿主/客户端/bundle/部署/服务测试 + 3 个插件样本
 ```
 
 - 你主要接触 `src/`、`lib/client.js`、`docs/` 和测试；
@@ -167,6 +167,7 @@ $DSH_HOME/profiles/desktop/cordis.patch.yml
               → CLIENT_NO_UI_SLOT / LEGACY_SLOT：改 slot 名称
               → CLIENT_STYLES_SERVICE：去掉已移除的 styles.insert
               → CLIENT_WORKSPACES_PICKDIRECTORY：取目录用 uiWorkspace.pickDirectory()
+              → CLIENT_SERVICE_EAGER_LOOKUP：不要在 apply 时把服务缓存成 null
 ```
 
 更完整的排查与构建说明见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
@@ -357,6 +358,7 @@ bash install.sh --profile desktop --mode link
 | `WEBSERVER_NOT_INJECTED` | 用了 `ctx.webServer` 但没有等待 `webServer` 服务 | 加 `inject` 或用 `ctx.inject(['webServer'], ...)` |
 | `CLIENT_STYLES_SERVICE` | 使用了已移除的 `styles.insert` | 改为插件自己创建 `<style>` 或内联 style |
 | `CLIENT_WORKSPACES_PICKDIRECTORY` | 把 `workspaces` 当成目录选择器 | 改用 `ctx.get('uiWorkspace').pickDirectory()` |
+| `CLIENT_SERVICE_EAGER_LOOKUP` | apply/顶层取非框架服务并缓存成 null | 点击时重新 `ctx.get(...)`，或用 `ctx.inject([...], cb)` |
 | `CLIENT_UNKNOWN_SERVICE` | `ctx.get('...')` 不在当前 client 服务目录 | 若由其他插件提供可忽略；否则核对 provider |
 | `CLIENT_LEGACY_SERVICE` | 使用了已移除的 client 服务 | 按 `docs/service-catalog-0.2.1.md` 替换 |
 | `CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT` | factory 模块没有导出 `apply` / `inject` | 修构建出口 |
@@ -464,12 +466,13 @@ bash install.sh --profile desktop --mode link
 - 设置页目前是说明 + 扫描/分析（`settings.section`）。如果以后要暴露**可持久化配置**，应迁移到插件配置卡片档位（`plugins.item` + `ctx.configForms` + Host 设置命名空间）。
 - 规则集版本与 Harness 版本解耦：`dshpd_analyze` 输出里会带 `ruleset.version`。
 
-## 1.3.1 更新要点
+## 1.3.2 更新要点
 
+- **服务取值时机**：新增 `CLIENT_SERVICE_EAGER_LOOKUP`，检测 apply/顶层 `const x = ctx.get('uiWorkspace')` 后把 `typeof` 结果固化为 null 的写法；改为点击时重新取值，或用 `ctx.inject([...], cb)` 等待服务。
 - **client 服务目录**：新增 `src/services.js` 与 [docs/service-catalog-0.2.1.md](docs/service-catalog-0.2.1.md)，规则覆盖 `CLIENT_WORKSPACES_PICKDIRECTORY`（`workspaces` 不是目录选择器，`uiWorkspace.pickDirectory()` 才是）、`CLIENT_UNKNOWN_SERVICE`、`CLIENT_LEGACY_SERVICE`。
 - 依据 GitHub 当前 `packages/client/ui-workspace/src/client/index.ts` 与本地 0.2.1 bundle：`ctx.get('workspaces')` 本身合法（workspace controller），`pickDirectory` 在 `uiWorkspace` 上。
 - 更新 UI 座位快照（`shell.*`、`deliverables.*`、`main.*`、`workspace.*`）。
-- 测试增加服务目录/别名调用用例；总计 37。
+- 测试增加服务目录/别名调用/延迟取值用例；总计 40。
 
 ## 1.3.0 更新要点
 

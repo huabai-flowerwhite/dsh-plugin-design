@@ -1,6 +1,6 @@
 # dsh plugin design — 设计自述
 
-本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.3.1`，对应顶层设计文档第 53 节的最终交付物。
+本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.3.2`，对应顶层设计文档第 53 节的最终交付物。
 
 ## 定位
 
@@ -98,7 +98,7 @@ dsh-plugin-design/
 - 官方契约：`engines.dsh`（含 `workspace:` 拒绝、运行时版本满足性）、`dsh.manifestVersion`、`dsh.bundle.patch`（字符串/数组、越界、缺失、npm files 覆盖）、`dsh.client`（platform / `exports["./client"]` / bundle 存在性 / factory 形态 / 注册 id / `inject`/`external`/`immediately` 类型 / 自引用 / 基线模块）、Host 入口、`exports["./package.json"]`、子路径 `package.json`、图标格式与 256 KiB 上限、`type: module`、npm `files` 完整性。
 - 0.2.0 移除项：`@deepseek-ai/dsh-invariants` / `<pkg>/invariant` 依赖与 import、patch 中的 invariant 行。
 - 源码：globalThis/window/prototype patch、类型断言绕过、模块级 session 状态、危险命令、命令注入、硬编码密钥、eval/new Function、定时器未清理、工具缺 `output`、waterfall 缺 `next()`。
-- UI：`CLIENT_BUILD_STALE`（源码比 bundle 新）、`CLIENT_NO_BUILD_SCRIPT`（没有可重复构建命令）、`CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT`、`CLIENT_NO_UI_SLOT`、`CLIENT_REACT_MISSING`、`CLIENT_STYLES_SERVICE`、`CLIENT_ROUTE_MISSING`（client fetch 无 Host 路由）、`WEBSERVER_NOT_INJECTED`、`HOST_FS_HARD_INJECT`；client 服务目录：`CLIENT_WORKSPACES_PICKDIRECTORY`（`workspaces` 不是目录选择器）、`CLIENT_UNKNOWN_SERVICE`、`CLIENT_LEGACY_SERVICE`（快照见 [docs/service-catalog-0.2.1.md](docs/service-catalog-0.2.1.md)）；`dshpd_ui_check` 还会查询运行中的 `clientModules.graph()` 判断 `inGraph` / `rev` / `clientPath`。详见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
+- UI：`CLIENT_BUILD_STALE`（源码比 bundle 新）、`CLIENT_NO_BUILD_SCRIPT`（没有可重复构建命令）、`CLIENT_BUNDLE_NO_APPLY` / `NO_INJECT`、`CLIENT_NO_UI_SLOT`、`CLIENT_REACT_MISSING`、`CLIENT_STYLES_SERVICE`、`CLIENT_ROUTE_MISSING`（client fetch 无 Host 路由）、`WEBSERVER_NOT_INJECTED`、`HOST_FS_HARD_INJECT`；client 服务目录：`CLIENT_WORKSPACES_PICKDIRECTORY`（`workspaces` 不是目录选择器）、`CLIENT_SERVICE_EAGER_LOOKUP`（apply 时缓存非框架服务）、`CLIENT_UNKNOWN_SERVICE`、`CLIENT_LEGACY_SERVICE`（快照见 [docs/service-catalog-0.2.1.md](docs/service-catalog-0.2.1.md)）；`dshpd_ui_check` 还会查询运行中的 `clientModules.graph()` 判断 `inGraph` / `rev` / `clientPath`。详见 [docs/client-ui-recovery.md](docs/client-ui-recovery.md)。
 - 结论：`BLOCKED`（任意 BLOCKER）/ `NEEDS_REVIEW`（任意 CRITICAL）/ `READY_TO_MODIFY`；维度分从 100 扣严重度权重。
 - 迁移项：`manifest-version`、`engines-dsh`、`bundle-patch`、`client-meta`、`remove-invariants-dep`，由 `dshpd_migrate` 执行（只改 package.json）。
 
@@ -127,7 +127,7 @@ dsh-plugin-design/
 
 ## 验证计划
 
-- **静态**：`npm test`（37 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、无 UI 插件的 UI 提案、client 服务目录、14 工具/3 路由、desktop/web profile 挂载、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
+- **静态**：`npm test`（40 个 case）——自身清单/图标/导出、DH-TP-SDK、bundle patch、源码安全、SemVer、三类 fixture 规则命中、UI 诊断、无 UI 插件的 UI 提案、client 服务目录、eager lookup、14 工具/3 路由、desktop/web profile 挂载、完整备份-修改-校验-回滚、清单迁移、client 构建防漂移。
 - **运行时**：重启 dsh 后确认 14 个 `dshpd_*` 工具注册、`/dsh-plugin-design/{info,discover,analyze}` 可用、`dshpd_ui_check` 能读到 `clientModules.graph()` 并返回 desktop/web 挂载状态、设置页扫描/分析返回 JSON。
 - **生命周期**：插件卸载后工具、路由、slot 全部消失（由 `ctx` 注册与 `ctx.effect` 保证）。
 - 完整的 DH-TP-SDK 认证矩阵（§26–§34）需在 dsh 运行时内由 `dshpd_analyze` + 人工验证完成，属启发式 + 手动范畴。

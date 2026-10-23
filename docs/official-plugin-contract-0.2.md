@@ -153,7 +153,7 @@ dsh plugin --profile web add ./my-plugin
 1. **是否进入运行中的 client graph**：`dshpd_ui_check` 的 `runtime.inGraph`；为 false 时检查 Loader row 是否裸包名、`dsh.client`、`exports["./client"]`、`lib/client.js` 是否存在，然后重启/刷新。
 2. **构建是否过期**：`CLIENT_BUILD_STALE` 表示 `src/client` 比 `lib/client.js` 新；必须重新构建，否则页面永远加载旧 bundle。
 3. **bundle 是否可执行**：factory-form、`exports.apply`、`exports.inject`；缺 apply 会注册空模块。
-4. **UI 座位是否还叫这个名字**：`CLIENT_NO_UI_SLOT` 表示没有注册已知座位；旧版 `styles.insert` 已移除（`CLIENT_STYLES_SERVICE`）；`workspaces` 不是目录选择器（正确是 `uiWorkspace.pickDirectory()`，见 `CLIENT_WORKSPACES_PICKDIRECTORY`）。
+4. **UI 座位是否还叫这个名字**：`CLIENT_NO_UI_SLOT` 表示没有注册已知座位；旧版 `styles.insert` 已移除（`CLIENT_STYLES_SERVICE`）；`workspaces` 不是目录选择器（正确是 `uiWorkspace.pickDirectory()`，见 `CLIENT_WORKSPACES_PICKDIRECTORY`）；服务名对但 apply 时取值会固化 undefined 的，见 `CLIENT_SERVICE_EAGER_LOOKUP`。
 5. **client 与 Host 的路由是否对得上**：`CLIENT_ROUTE_MISSING` 会让 fetch 落到 SPA fallback，表现为 `Unexpected token "<"` 或空白页；`WEBSERVER_NOT_INJECTED` 会让路由根本没注册。
 6. **是否用了 React 却没有 require/import**：`CLIENT_REACT_MISSING`，apply 时直接抛错。
 
@@ -198,6 +198,7 @@ dsh plugin --profile web add ./my-plugin
 | `CLIENT_REACT_MISSING` | HIGH | client | `require("react")` / `import React` |
 | `CLIENT_STYLES_SERVICE` | HIGH | client | 改插件自有 `<style>` 或内联 style |
 | `CLIENT_WORKSPACES_PICKDIRECTORY` | HIGH | client | `uiWorkspace.pickDirectory()`；`workspaces` 是 controller |
+| `CLIENT_SERVICE_EAGER_LOOKUP` | HIGH | client | 不要在 apply/顶层缓存非框架服务；点击时重取或 `ctx.inject` |
 | `CLIENT_UNKNOWN_SERVICE` | MEDIUM | client | 核对 provider；若由其他插件提供可忽略 |
 | `CLIENT_LEGACY_SERVICE` | HIGH | client | 按 `docs/service-catalog-0.2.1.md` 替换 |
 | `CLIENT_ROUTE_MISSING` | HIGH | client | 补 Host `webServer.register({ path })` |
