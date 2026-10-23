@@ -1,10 +1,10 @@
 # dsh plugin design — 设计自述
 
-本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），对应顶层设计文档第 53 节的最终交付物。
+本目录是 `dsh plugin design` 的**持久化插件项目**（npm 包 + 官方 bundle 形态），当前版本 `1.2.1`，对应顶层设计文档第 53 节的最终交付物。
 
 ## 定位
 
-一个运行于 DeepSeek Harness 中的「第三方插件规范适配与自动修改」元插件：分析先于修改、设计先于执行、用户确认后才修改、修改可校验、失败可回滚。
+一个运行于 DeepSeek Harness 中的「第三方插件规范分析、自动修改与开发」元插件：分析先于修改、设计先于执行、用户确认后才修改、修改可校验、失败可回滚。它不只做“适配”，也可以按 `design.md` 继续修改现有插件、按规范重构，或从零开发新插件。
 
 规则集 `0.2.1` 同时覆盖两套依据：
 
@@ -22,6 +22,16 @@ discover                     approve（门控，签发 approvalToken）
 ```
 
 核心安全边界：`dshpd_apply` / `dshpd_migrate` 三重校验（approvalToken + backupId + 文件在备份清单内），外加写前 hash 校验（文件在备份后被改动则拒绝）、`dryRun` 预览、journal 记录、`dshpd_verify` 校验、`dshpd_rollback` 从磁盘快照恢复。
+
+## 使用话术（聊天框 3 步）
+
+设置页与文档统一使用同一套话术，避免用户把 `design.md` 当成终点：
+
+1. **出方案**：`使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。`
+2. **你审核**：打开 `<插件>/.dsh-plugin-design/design.md`，把意见直接告诉 Agent，让它更新方案。
+3. **修改 / 规范 / 开发**：`design.md 我已确认。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。`
+
+`design.md` 是“施工图”：确认后可以继续修改现有代码、按规范重构，或从零开发新插件；只想看分析结果时停在第 1/2 步即可，不会改源码。
 
 ## 最终形态：官方 bundle + host composition
 
@@ -48,6 +58,14 @@ dsh-plugin-design/
 - **Client bundle**：`window.__ModuleLoader__.load({ id, factory })` 的 lazy-CJS；`id` 必须等于包名。源码只用平台基线模块（本插件只 `require('react')`）。
 - **设置页路由**：`ctx.inject(['webServer'], ...)` 可选注入，避免 apply 早于 webServer 就绪；路由只读，使用 node:fs 适配器，因此可扫描 workspace 之外的插件目录。
 - **生命周期**：工具注册、路由注册、slot 注册都通过 `ctx` / `ctx.effect` 完成，卸载自动清理；`apply` 不保留需要手动释放的资源。
+
+## 设置页信息架构（1.2.1）
+
+按「普通用户先看懂，技术细节按需展开」组织：
+
+1. **主视图**：一句话定位 → 能帮你做什么（检查 / 出方案 / 动手）→ 聊天框 3 步（明确 `design.md` 后可以继续修改 / 规范 / 开发）→ 设置页三个按钮 → 扫描与分析列表。
+2. **技术信息（折叠）**：规则集与兼容范围、12 个工具分组、安装/升级命令、安全边界、非官方认证声明。
+3. **文案原则**：先说结果（“帮你检查并改好插件”），再说步骤（3 步 + 示例提示词），最后才出现 `engines.dsh`、factory bundle 等术语；不在首屏堆技术名词。
 
 ## 规则引擎（src/rules.js）
 

@@ -3,9 +3,9 @@ manifestVersion: 1
 plugin:
   id: com.example.dsh.plugin-design
   name: dsh plugin design
-  version: 1.2.0
+  version: 1.2.1
   description: >-
-    DSH 第三方插件规范适配与自动修改元插件：发现、检查、静态分析（官方
+    DSH 第三方插件规范分析、自动修改与开发元插件：发现、检查、静态分析（官方
     package.json.dsh 契约 0.2.x + DH-TP-SDK）、生成 design.md、审批门控、
     备份/逐项修改/清单迁移/校验/回滚，并提供 Settings UI。
 

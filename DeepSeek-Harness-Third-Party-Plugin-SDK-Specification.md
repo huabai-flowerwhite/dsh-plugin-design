@@ -1646,4 +1646,4 @@ DeepSeek Harness 官方架构是本规范的技术依据；本规范是在其插
 
 ## 48.7 参考实现
 
-`dsh-plugin-design` 1.2.0 的规则集 `0.2.1` 实现了上述检查、受限清单迁移、持久化备份/journal、修改后校验与回滚；详细规则映射见其 `docs/official-plugin-contract-0.2.md`。Bronze/Silver/Gold、P0–P4、S0–S4 仍为本规范的工程化等级，不是 DeepSeek 官方认证。
+`dsh-plugin-design` 1.2.1 的规则集 `0.2.1` 实现了上述检查、受限清单迁移、持久化备份/journal、修改后校验与回滚；详细规则映射见其 `docs/official-plugin-contract-0.2.md`。Bronze/Silver/Gold、P0–P4、S0–S4 仍为本规范的工程化等级，不是 DeepSeek 官方认证。

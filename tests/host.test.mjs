@@ -335,7 +335,7 @@ test('settings routes answer info/analyze/discover over the wire contract', asyn
   await byPath.get('/dsh-plugin-design/info').handler(makeRouteRequest('GET', '/dsh-plugin-design/info'), info)
   assert.equal(info.statusCode, 200)
   const infoJson = JSON.parse(info.body)
-  assert.equal(infoJson.version, '1.2.0')
+  assert.equal(infoJson.version, '1.2.1')
   assert.equal(infoJson.tools.length, 12)
 
   const analyze = makeRouteResponse()
