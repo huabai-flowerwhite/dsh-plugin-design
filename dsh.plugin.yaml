@@ -1,13 +1,16 @@
 manifestVersion: 1
 
+# DH-TP-SDK engineering manifest. It is a project-owned declaration, NOT a
+# runtime-enforced permission contract: DSH loads the official package.json.dsh
+# fields; nothing here grants or removes capabilities.
 plugin:
   id: com.example.dsh.plugin-design
   name: dsh plugin design
-  version: 1.3.2
+  version: 1.4.3
   description: >-
-    DSH 第三方插件规范分析、自动修改与开发元插件：发现、检查、静态分析（官方
-    package.json.dsh 契约 0.2.x + DH-TP-SDK）、生成 design.md、审批门控、
-    备份/逐项修改/清单迁移/校验/回滚，并提供 Settings UI。
+    DSH 第三方插件维护助手：有界证据扫描（worker/预算/覆盖率）、计划绑定的批准、
+    逐字节快照与 CAS 修改、分层校验、官方 pluginManager 部署、独立恢复 CLI，
+    以及目标插件的可移植分发（包审计、预构建 tgz、SHA-256、干净环境验证）。
 
 runtime:
   harness:
@@ -28,27 +31,41 @@ capabilities:
     - com.example.dsh.plugin-design.tool.dshpd_analyze
     - com.example.dsh.plugin-design.tool.dshpd_ui_check
     - com.example.dsh.plugin-design.tool.dshpd_design
-    - com.example.dsh.plugin-design.tool.dshpd_mount
+    - com.example.dsh.plugin-design.tool.dshpd_plan
     - com.example.dsh.plugin-design.tool.dshpd_approve
     - com.example.dsh.plugin-design.tool.dshpd_backup
     - com.example.dsh.plugin-design.tool.dshpd_apply
+    - com.example.dsh.plugin-design.tool.dshpd_write
     - com.example.dsh.plugin-design.tool.dshpd_migrate
+    - com.example.dsh.plugin-design.tool.dshpd_mount
     - com.example.dsh.plugin-design.tool.dshpd_verify
     - com.example.dsh.plugin-design.tool.dshpd_rollback
     - com.example.dsh.plugin-design.tool.dshpd_status
     - com.example.dsh.plugin-design.tool.dshpd_report
+    - com.example.dsh.plugin-design.tool.dshpd_distribute
+    - com.example.dsh.plugin-design.tool.dshpd_validate
     - com.example.dsh.plugin-design.route.info
     - com.example.dsh.plugin-design.route.discover
     - com.example.dsh.plugin-design.route.analyze
+    - com.example.dsh.plugin-design.route.client-health
+    - com.example.dsh.plugin-design.route.health
     - com.example.dsh.plugin-design.slot.settings.section
+    - com.example.dsh.plugin-design.cli.dshpd-recover
 
   consumes:
+    # Required host-plane services.
     - ctx.tools
-    - ctx.fs
     - ctx.webServer
-    - ctx.sandboxPolicy
-    - ctx.slots
-    - ctx.uiWorkspace
+    # Agent-plane services resolved per call (never hard-injected).
+    - ctx.fs (per-call, agent plane)
+    - ctx.sandboxPolicy (per-call, agent plane)
+    # Optional services, capability-probed and reported when absent.
+    - ctx.pluginManager (optional: official deployment adapter)
+    - ctx.approval (optional: official approval channel)
+    - ctx.clientModules (optional: runtime client graph)
+    - ctx.agentPresets (optional: retained preset realm lookup)
+    - ctx.slots (client half)
+    - ctx.uiWorkspace (client half, directory picker)
 
 events:
   subscribes: []
@@ -56,11 +73,16 @@ events:
   waterfall: []
 
 permissions:
+  # Declarations only; DSH does not enforce this file. Runtime writes still go
+  # through ctx.fs with an explicit sandboxPolicy and CAS guard, except for the
+  # plugin-design state root (own maintenance data, outside the target plugin).
   filesystem:
     read:
       - workspace/**
+      - "${DSH_HOME}/plugin-design-state/**"
     write:
-      - workspace/**
+      - workspace/target-plugin/** (only files listed in an approved plan)
+      - "${DSH_HOME}/plugin-design-state/**" (snapshots, journal, approvals, evidence)
 
   network:
     outbound: false
@@ -77,10 +99,10 @@ permissions:
 
 resources:
   maxRuntimeMs: 30000
-  maxMemoryMb: 512
+  maxMemoryMb: 256
   maxOutputBytes: 1048576
   maxProcesses: 1
-  maxConcurrentTasks: 12
+  maxConcurrentTasks: 4
 
 lifecycle:
   unloadable: true
@@ -88,11 +110,12 @@ lifecycle:
 
 session:
   modelVisibleState: false
-  durableState: false
+  durableState: true
 
 profiles:
   supported:
     - web
+    - desktop
 
 security:
   level: S2

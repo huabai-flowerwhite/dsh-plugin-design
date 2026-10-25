@@ -1,19 +1,57 @@
-# DSH 第三方插件官方契约（0.1.5 → 0.2.1）
+# DSH 第三方插件官方契约（固定基线索引）
 
-本文件是 `dsh plugin design` 规则集 `0.2.1` 的事实依据，供 `dshpd_analyze` 的结论追溯与人工复核使用。
+> **基线（发布合同）**：官方标签 `dsh-v0.2.1-rc.3`，提交
+> `1f81c047fc48fa190a683e469daa699857e9afe8`。
+> **历史研究基线**：`22ddee3792402c3e70ec5f86a63c3e3e895a2f60`（清单也写 rc.3，
+> 但包含发布标签之外的变更；两者接口不完全相同）。
+> **本机实际运行**：Desktop `0.2.1-rc.3`（`E:/运行包/DSHpc`，Electron 44.7.0 /
+> Node 24.21.0 / win32-x64，`app.asar` SHA-256 `04b32e3a…eff1f0`）。工作区
+> `E:/运行包/DSHpc.new-{GUID}` 是旧 rc.2 暂存目录，不是当前安装。
+>
+> 本文件不再是“0.2.x 通用说明”，而是对发布基线的字段与行为索引。破坏性变化、后续版本
+> 新增字段必须单独记录并绑定版本，不得用 `0.2.x` 覆盖全部差异。
+>
+> 规则集 `0.2.1-r2`。运行时以 `package.json.dsh` 为准；`dsh.plugin.yaml`（DH-TP-SDK）
+> 是本项目附加的工程化清单，Harness 运行时**不读取**它，其权限/资源字段也**不被强制**。
+>
+> 相关：`docs/security-model.md`（信任边界）、`docs/distribution-contract.md`（分发）、
+> `SUPPORT-MATRIX.md`（已测组合）。
 
-> 官方契约以 `package.json` 的 `dsh` 字段为准；`dsh.plugin.yaml`（DH-TP-SDK）是本项目附加的工程化清单，Harness 运行时**不读取**它。
+## 0.0 rc.3 发布标签与历史研究 master 的已知差异
+
+以下差异由实际安装的 rc.3 `app.asar` 源码与发布源码核对（2026-10-25 增量核验）：
+
+| 合同 | rc.3 发布版（`1f81c04`） | 研究 master（`22ddee3`） | 本项目处理 |
+|---|---|---|---|
+| Plugin Manager 更新 | **没有** `updateBundle` / `listVersions`；有 `installBundle`/`removeBundle`/`setBundleEnabled`/`setPluginEnabled`/`listBundles`/`listPlugins`/`inspect`/`registries`/`waitForInstall`/`cancelInstall` | 有 `updateBundle`/`listVersions` | 能力逐项探测；缺失项 `UNSUPPORTED`；更新用精确 spec 的 `installBundle` 或官方 CLI |
+| Client 包元数据 | `client-modules` 的 `pkgMeta` 按 loader specifier + baseUrl 缓存，**包含 null（非 Client）负结果**，直到 Host 重启 | 重协调时重新读取 | 清单/Client 导出变化后要求整机重启，再 `dshpd_ui_check` |
+| `dsh.bundle.listedByDefault` | 发布类型不含 | 类型含 | 不生成、不宣称发布版支持 |
+| `optionalDependencies` 清单类型 | 发布接口未列出 | 类型含 | 只标类型差异，不推断 npm 不支持 |
+| Client 路径/file URL 发现、preset `serviceFor` | 存在 | 存在 | 不当作缺失；按真实上下文验证 |
+
+## 0. 与 1.3.2 文档的差异（以本节为准）
+
+- 旧文中的“所有插件都应挂到 desktop profile”“升级必须 remove 再 add”“mtime 可证明
+  构建新鲜”“Loader row 必须是裸包名”等结论已移除。部署目标由调用方显式指定；
+  升级使用官方 pluginManager；mtime 只是提示；row 解析按实际 patch 语义。
+- `engines.dsh` 的判定使用 node-semver `{ includePrerelease: true }`，`engines.dsh`
+  存在时单独决定兼容性（peer 不再参与）。
+- 静态规则命中不是认证；运行时安全只能由隔离运行验证。
 
 ## 1. 权威来源
 
-- 仓库：<https://github.com/deepseek-ai/deepseek-harness>（`master`，tag `dsh-v0.2.1-rc.2`，commit `687f282`）
+- 仓库：<https://github.com/deepseek-ai/deepseek-harness>，commit `22ddee3`
+- 兼容性判定：`packages/boot/app-boot/src/plugin-compatibility.ts`
+- 插件管理：`packages/boot/plugin-manager/src/index.ts`、`src/types.ts`
+- 审批通道：`packages/interaction/user-approval/src/index.ts`、`src/types.ts`
+- fs 契约：`packages/fs/fs/src/index.ts`、`src/types.ts`
+- profile 锁：`packages/util/atomic-write/src/index.ts`
+- 客户端模块：`packages/client/modules/README.md`、`src/client/manifest.ts`
+- 预设 realm：`packages/preset/agent-preset-registry/src/index.ts`、`src/mount.ts`
 - 打包与安装：`docs/user/develop/basic/publish.md`
-- 插件配置：`docs/user/develop/basic/config.md`
-- 工具开发：`docs/user/develop/basic/tool.md`、`docs/cookbook/adding-a-tool.md`
-- 设置卡片：`docs/cookbook/adding-a-settings-card.md`
-- 客户端模块：`docs/subsystems/client-modules.md`、`packages/client/modules/README.md`
-- 版本升级指南：`docs/upgrade-guide/v0.2.0-rc.2/*`、`docs/upgrade-guide/v0.2.1-alpha.*/*`
-- 插件清单类型：`packages/util/package-manifest/src/types.ts`
+
+> 以下各节保留 1.3.2 时期的字段说明，作为固定基线参考；与本节冲突时以本节和第 9 节
+> “部署/运行时”为准。
 
 ## 2. `package.json` 官方字段
 

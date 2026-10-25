@@ -1,7 +1,17 @@
-# Client 服务目录快照（DSH 0.2.1）
+# Client 服务目录快照（基线 0.2.1-rc.3 / 实际运行 0.2.1-rc.2）
 
 > 用途：`CLIENT_UNKNOWN_SERVICE`、`CLIENT_LEGACY_SERVICE`、`CLIENT_WORKSPACES_PICKDIRECTORY`、`CLIENT_SERVICE_EAGER_LOOKUP` 的事实依据。
 > 这不是官方 API 清单；官方源码变化时，先更新本文件，再更新 `src/services.js`。
+>
+> **来源与限定（1.4.0 补充）**
+> - 快照来自固定提交 `22ddee3`（`0.2.1-rc.3`）的 client 包；实际运行时为
+>   `0.2.1-rc.2`。方法存在不等于行为兼容，关键服务仍需行为测试。
+> - `ctx.get(name)` 的解析受 Cordis isolate realm 影响：host 平面查找不会进入
+>   agent preset 的隔离 realm。agent 平面服务应使用
+>   `ctx.agentPresets.serviceFor(agent, name)` 或 agent 自己的 ctx；解析结果与来源
+>   realm 由 `src/runtime/fingerprint.js` 记录，能力未知时报告 UNKNOWN，不猜测方法。
+> - 服务名未知可能只是由其它插件提供；规则只把它作为复核提示，不作为阻断项。
+
 
 ## 1. 这次为什么需要它
 

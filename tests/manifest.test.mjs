@@ -22,15 +22,15 @@ function read(relativePath) {
 }
 
 const TOOL_NAMES = [
-  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design', 'dshpd_mount',
-  'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_migrate',
-  'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report',
+  'dshpd_discover', 'dshpd_inspect', 'dshpd_analyze', 'dshpd_ui_check', 'dshpd_design', 'dshpd_plan',
+  'dshpd_approve', 'dshpd_backup', 'dshpd_apply', 'dshpd_write', 'dshpd_migrate', 'dshpd_mount',
+  'dshpd_verify', 'dshpd_rollback', 'dshpd_status', 'dshpd_report', 'dshpd_distribute', 'dshpd_validate',
 ]
 
 test('package.json follows the official 0.2.x plugin contract', () => {
   const pkg = JSON.parse(read('package.json'))
   assert.equal(pkg.name, 'dsh-plugin-design')
-  assert.equal(pkg.version, '1.3.2')
+  assert.equal(pkg.version, '1.4.3')
   assert.equal(pkg.type, 'module')
   assert.equal(pkg.license, 'MIT')
   assert.match(pkg.engines.dsh, />=0\.1\.5-rc\.1/)
@@ -38,19 +38,23 @@ test('package.json follows the official 0.2.x plugin contract', () => {
   assert.equal(pkg.exports['.'], './src/index.js')
   assert.equal(pkg.exports['./client'], './lib/client.js')
   assert.equal(pkg.exports['./package.json'], './package.json')
+  assert.equal(pkg.bin['dshpd-recover'], './bin/dshpd-recover.mjs')
   assert.equal(pkg.dsh.manifestVersion, 1)
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(pkg.dsh.client.platform, 'web')
   assert.equal(pkg.dsh.compatibility.harness, pkg.engines.dsh)
   assert.ok(existsSync(join(root, pkg.icon)), 'declared icon must exist inside the package')
   assert.ok(pkg.repository && pkg.repository.url)
+  for (const entry of ['bin', 'src', 'lib', 'tests']) {
+    assert.ok(pkg.files.includes(entry), 'npm files must include ' + entry)
+  }
 })
 
 test('dsh.plugin.yaml keeps the DH-TP-SDK engineering manifest in sync', () => {
   const raw = read('dsh.plugin.yaml')
   assert.match(raw, /^manifestVersion:\s*1\s*$/m)
   assert.match(raw, /^\s+id:\s*com\.example\.dsh\.plugin-design\s*$/m)
-  assert.match(raw, /^\s+version:\s*1\.3\.2\s*$/m)
+  assert.match(raw, /^\s+version:\s*1\.4\.3\s*$/m)
   assert.match(raw, /^\s+min:\s*0\.1\.5-rc\.1\s*$/m)
   assert.match(raw, /^\s+max:\s*"<0\.3\.0"\s*$/m)
   assert.match(raw, /^\s+apiLevel:\s*1\s*$/m)
@@ -107,13 +111,17 @@ test('host half resolves no @deepseek-ai package at runtime', () => {
   }
 })
 
-test('install scripts prefer the official bundle installer and keep a link fallback', () => {
+test('install scripts delegate to the official manager without a remove-then-add upgrade', () => {
   const powershell = read('install.ps1')
-  assert.match(powershell, /dsh plugin --profile|'plugin', '--profile'/)
-  assert.match(powershell, /fallback link mode/)
-  assert.match(powershell, /Test-BundleInstalled/)
+  assert.match(powershell, /'plugin', '--profile'/)
+  assert.match(powershell, /no remove-then-add/)
+  assert.match(powershell, /link:/)
+  assert.match(powershell, /will not fall back to editing a profile directly/)
+  assert.doesNotMatch(powershell, /Test-BundleInstalled/)
   const shell = read('install.sh')
   assert.match(shell, /plugin --profile/)
-  assert.match(shell, /fallback link mode/)
-  assert.match(shell, /has_bundle/)
+  assert.match(shell, /no remove-then-add/)
+  assert.match(shell, /link:/)
+  assert.match(shell, /will not edit a profile directly/)
+  assert.doesNotMatch(shell, /has_bundle/)
 })

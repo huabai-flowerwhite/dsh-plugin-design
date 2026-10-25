@@ -20,11 +20,13 @@ import {
   findEagerServiceLookups,
   findWorkspacesPickerMisuse,
 } from './services.js'
+import { isValidRange, satisfies as semverRangeSatisfies, validRange } from './semver.js'
 
 /** Ruleset identity surfaced in tool output and documentation. */
 export const RULESET = Object.freeze({
-  version: '0.2.1',
-  updatedAt: '2026-10-23',
+  version: '0.2.1-r2',
+  updatedAt: '2026-10-25',
+  dshRange: '>=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)',
   sources: [
     'https://github.com/deepseek-ai/deepseek-harness',
     'docs/user/develop/basic/publish.md',
@@ -32,6 +34,13 @@ export const RULESET = Object.freeze({
     'docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md',
     'docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md',
     'docs/upgrade-guide/v0.2.1-alpha.3/plugin-engines-dsh/guide.md',
+    'packages/boot/app-boot/src/plugin-compatibility.ts',
+  ],
+  safetyClaim: 'static-preflight-only',
+  limitations: [
+    '规则命中不能证明代码安全；未命中也不代表宿主不会崩溃或退出。',
+    '同步死循环、OOM、process.exit、未处理拒绝等只能由隔离运行时验证。',
+    'regex/AST 预检是启发式证据，不是 DSH 官方认证。',
   ],
 })
 
@@ -133,6 +142,11 @@ export function addIssue(issues, issue) {
     file: issue.file || null,
     line: issue.line || null,
     migration: issue.migration || null,
+    ruleVersion: issue.ruleVersion || RULESET.version,
+    source: issue.source || 'dsh-plugin-design/' + RULESET.version,
+    confidence: issue.confidence || 'heuristic',
+    applicableDsh: issue.applicableDsh || RULESET.dshRange,
+    requiresIsolatedRuntime: issue.requiresIsolatedRuntime === true,
   })
 }
 
@@ -156,136 +170,33 @@ export function verdictOf(issues) {
 }
 
 // ---------------------------------------------------------------------------
-// Minimal SemVer range check (enough for engines.dsh; no dependency allowed).
+// SemVer (official semantics)
 // ---------------------------------------------------------------------------
 
-function parseSemver(value) {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(String(value || '').trim())
-  if (match === null) return null
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-    pre: match[4] === undefined ? [] : match[4].split('.'),
-  }
-}
-
-function comparePre(left, right) {
-  if (left.length === 0 && right.length === 0) return 0
-  if (left.length === 0) return 1
-  if (right.length === 0) return -1
-  const length = Math.max(left.length, right.length)
-  for (let index = 0; index < length; index += 1) {
-    const a = left[index]
-    const b = right[index]
-    if (a === undefined) return -1
-    if (b === undefined) return 1
-    if (a === b) continue
-    const aNumber = /^\d+$/.test(a)
-    const bNumber = /^\d+$/.test(b)
-    if (aNumber && bNumber) return Number(a) < Number(b) ? -1 : 1
-    if (aNumber) return -1
-    if (bNumber) return 1
-    return a < b ? -1 : 1
-  }
-  return 0
-}
-
-function compareSemver(left, right) {
-  if (left.major !== right.major) return left.major < right.major ? -1 : 1
-  if (left.minor !== right.minor) return left.minor < right.minor ? -1 : 1
-  if (left.patch !== right.patch) return left.patch < right.patch ? -1 : 1
-  return comparePre(left.pre, right.pre)
-}
-
-function bump(version, part) {
-  const next = { ...version, pre: [] }
-  if (part === 'major') return { major: next.major + 1, minor: 0, patch: 0, pre: [] }
-  if (part === 'minor') return { major: next.major, minor: next.minor + 1, patch: 0, pre: [] }
-  return { major: next.major, minor: next.minor, patch: next.patch + 1, pre: [] }
-}
-
-/** Fill missing version parts with zero and return wildcard information. */
-function partialVersion(raw) {
-  const trimmed = String(raw || '').trim()
-  const match = /^v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:-([0-9A-Za-z.-]+))?$/.exec(trimmed)
-  if (match === null) return null
-  const wildcard = (part) => part === undefined || /^[xX*]$/.test(part)
-  return {
-    raw: trimmed,
-    major: wildcard(match[1]) ? null : Number(match[1]),
-    minor: wildcard(match[2]) ? null : Number(match[2]),
-    patch: wildcard(match[3]) ? null : Number(match[3]),
-    pre: match[4] === undefined ? [] : match[4].split('.'),
-    wildcardMinor: wildcard(match[2]),
-    wildcardPatch: wildcard(match[3]),
-  }
-}
-
-function comparatorFrom(token) {
-  const match = /^(\^|~|>=|<=|>|<|=)?\s*(.+)$/.exec(String(token || ''))
-  if (match === null) return null
-  const operator = match[1] === undefined ? '' : match[1]
-  const partial = partialVersion(match[2])
-  if (partial === null) return null
-  return { operator, partial }
-}
-
-function testComparator(version, comparator) {
-  const { operator, partial } = comparator
-  if (partial.major === null) return true
-  const floor = {
-    major: partial.major,
-    minor: partial.minor === null ? 0 : partial.minor,
-    patch: partial.patch === null ? 0 : partial.patch,
-    pre: partial.pre,
-  }
-  // A partial version without an operator is a range over the omitted parts.
-  if (operator === '' || operator === '=') {
-    if (partial.wildcardMinor || partial.wildcardPatch) {
-      if (version.major !== floor.major) return false
-      if (!partial.wildcardMinor && version.minor !== floor.minor) return false
-      if (!partial.wildcardPatch && version.patch !== floor.patch) return false
-      return true
-    }
-    return compareSemver(version, floor) === 0
-  }
-  if (operator === '^') {
-    if (compareSemver(version, floor) < 0) return false
-    if (floor.major > 0) return version.major === floor.major
-    if (floor.minor > 0) return version.major === 0 && version.minor === floor.minor
-    return version.major === 0 && version.minor === 0 && version.patch === floor.patch
-  }
-  if (operator === '~') {
-    if (compareSemver(version, floor) < 0) return false
-    return version.major === floor.major && version.minor === floor.minor
-  }
-  const order = compareSemver(version, floor)
-  if (operator === '>=') return order >= 0
-  if (operator === '<=') return order <= 0
-  if (operator === '>') return order > 0
-  if (operator === '<') return order < 0
-  return false
-}
-
 /**
- * Check a Version against a SemVer range. Deliberately small (no external
- * dependency is resolvable from a linked third-party package): operators
- * ^, ~, >, >=, <, <=, =, wildcards, partial versions, `||`, and space-joined
- * comparator sets. Hyphen ranges and `!=` are unsupported and reported as a
- * ruleset limitation instead of silently passing.
+ * Official DSH compatibility semantics: node-semver with
+ * `{ includePrerelease: true }` and an `engines.dsh` range that decides alone
+ * when present (packages/boot/app-boot/src/plugin-compatibility.ts:51-74).
+ *
+ * The previous hand-written matcher disagreed with that contract on legal
+ * input (`^0`, `>= 0.2.0`, hyphen ranges, partials) and mis-labelled `*` as an
+ * invalid range. `src/semver.js` is differentially tested against semver
+ * 7.8.5 (tests/fixtures/semver-cases.json).
  */
 export function semverSatisfies(version, range) {
-  const parsedVersion = parseSemver(version)
-  if (parsedVersion === null || typeof range !== 'string' || range.trim() === '') return false
-  const sets = range.split('||').map((part) => part.trim()).filter((part) => part !== '')
-  if (sets.length === 0) return false
-  return sets.some((set) => {
-    const tokens = set.split(/\s+/).filter(Boolean)
-    const comparators = tokens.map(comparatorFrom)
-    return comparators.every((comparator) => comparator !== null && testComparator(parsedVersion, comparator))
-  })
+  // The official helper treats an empty/whitespace range as unmet
+  // (`range.trim() !== '' && semver.satisfies(...)`), even though node-semver
+  // alone would read '' as '*'.
+  if (typeof range !== 'string' || range.trim() === '') return false
+  return semverRangeSatisfies(version, range, { includePrerelease: true })
 }
+
+/** Syntax validation independent of a running version. */
+export function semverRangeIsValid(range) {
+  return typeof range === 'string' && range.trim() !== '' && isValidRange(range)
+}
+
+export { validRange }
 
 // ---------------------------------------------------------------------------
 // Heuristic YAML probe for the optional DH-TP-SDK manifest.
@@ -476,7 +387,36 @@ export function analyzeModel(model) {
       source: 'none',
       range: null,
       runtime: harnessVersion,
+      checkedVersion: null,
       satisfied: null,
+      reason: null,
+    },
+    host: {
+      entryTarget: null,
+      entryPresent: false,
+      usesWebServer: false,
+      injectsWebServer: false,
+      hardInjectsFs: false,
+    },
+    artifacts: {
+      scanned: 0,
+      hostEntryScanned: false,
+      clientEntryScanned: false,
+      files: [],
+    },
+    scanCoverage: {
+      complete: false,
+      incompleteReasons: [],
+      scannedFiles: 0,
+      directories: 0,
+      bytesRead: 0,
+      elapsedMs: null,
+    },
+    runtimeVerification: {
+      required: false,
+      reasons: [],
+      status: 'NOT_RUN',
+      note: '静态预检不执行插件代码；同步死循环、OOM、进程退出、未处理拒绝只能在隔离运行时验证。',
     },
     bundle: {
       declared: bundle !== null,
@@ -506,6 +446,70 @@ export function analyzeModel(model) {
   if (official.bundle.declared || official.client.declared || official.profile) official.roles.push('package')
   if (official.bundle.declared) official.roles.push('bundle')
   if (official.client.declared) official.roles.push('client')
+
+  // ---- scan coverage and real artifacts ---------------------------------
+  const coverage = isPlainObject(model.coverage) ? model.coverage : null
+  if (coverage !== null) {
+    official.scanCoverage = {
+      complete: coverage.incomplete !== true,
+      incompleteReasons: stringArray(coverage.incompleteReasons),
+      scannedFiles: typeof coverage.filesVisited === 'number' ? coverage.filesVisited : 0,
+      sourceFiles: typeof coverage.scannedSourceFiles === 'number' ? coverage.scannedSourceFiles : 0,
+      directories: typeof coverage.directories === 'number' ? coverage.directories : 0,
+      bytesRead: typeof coverage.bytesRead === 'number' ? coverage.bytesRead : 0,
+      elapsedMs: typeof coverage.elapsedMs === 'number' ? coverage.elapsedMs : null,
+      unreadable: Array.isArray(coverage.unreadable) ? coverage.unreadable.slice(0, 50) : [],
+      skippedOversize: Array.isArray(coverage.skippedOversize) ? coverage.skippedOversize.slice(0, 50) : [],
+    }
+    if (coverage.incomplete === true) {
+      push({
+        id: 'SCAN_INCOMPLETE',
+        severity: 'HIGH',
+        category: 'testing',
+        title: '扫描未完成：没有覆盖全部候选文件',
+        detail: '原因：' + (official.scanCoverage.incompleteReasons.join(', ') || 'unknown')
+          + '。未扫描的文件可能包含入口或运行产物，结论不能视为完整。',
+        file: null,
+        confidence: 'verified',
+      })
+    }
+  }
+  const artifactFiles = sourceFiles.filter((file) => isPlainObject(file) && file.kind === 'artifact')
+  official.artifacts = {
+    scanned: artifactFiles.length,
+    hostEntryScanned: Boolean(model.hostEntry && typeof model.hostEntry.text === 'string'),
+    clientEntryScanned: Boolean(model.clientEntry && typeof model.clientEntry.text === 'string'),
+    files: artifactFiles.slice(0, 200).map((file) => ({ path: file.relative || file.path, bytes: file.bytes || 0 })),
+  }
+  const declaredHostEntry = (pkg !== null && isPlainObject(pkg.exports) && resolveExportTarget(pkg.exports, '.') !== null)
+    || (pkg !== null && nonEmptyString(pkg.main) !== null)
+  const hostEntryMissing = model.hostEntry !== undefined && model.hostEntry !== null
+    && (model.hostEntry.missing === true || (model.hostEntry.present === false && model.hostEntry.missing === true))
+  official.host.entryTarget = model.hostEntry && typeof model.hostEntry.path === 'string'
+    ? model.hostEntry.path
+    : (pkg !== null && nonEmptyString(pkg.main) !== null ? pkg.main : null)
+  official.host.entryPresent = Boolean(model.hostEntry && typeof model.hostEntry.text === 'string')
+  if (declaredHostEntry && hostEntryMissing) {
+    push({
+      id: 'HOST_ENTRY_MISSING',
+      severity: 'BLOCKER',
+      category: 'manifest',
+      title: 'Host 入口文件不存在',
+      detail: 'package.json 声明的 Host 入口 ' + String(official.host.entryTarget) + ' 在包内不存在；Loader 按包名导入时会直接失败。',
+      file: String(official.host.entryTarget),
+      confidence: 'verified',
+    })
+  } else if (!declaredHostEntry && (bundle !== null || client !== null || profile !== null)) {
+    push({
+      id: 'HOST_ENTRY_MISSING',
+      severity: 'BLOCKER',
+      category: 'manifest',
+      title: '缺少 Host 入口（exports["."] 或 main）',
+      detail: '声明了 bundle/client/profile 角色的包必须能被 Loader 按包名导入；空实现也要有 exports["."] 或 main。',
+      file: 'package.json',
+      confidence: 'verified',
+    })
+  }
 
   // ---- package identity -------------------------------------------------
   if (pkg === null) {
@@ -591,23 +595,35 @@ export function analyzeModel(model) {
           title: 'engines.dsh 使用了 workspace: 协议', detail: 'workspace: 只在 peerDependencies 中有效；engines.dsh 中出现会被判定为不兼容并拒绝安装。', file: 'package.json',
           migration: { id: 'engines-dsh', title: '把 workspace: 改成真实 SemVer 范围', tool: 'dshpd_migrate' },
         })
-      } else if (!/[\d]/.test(range)) {
+      } else if (!semverRangeIsValid(range.trim())) {
         push({
           id: 'ENGINES_DSH_INVALID_RANGE', severity: 'HIGH', category: 'compat',
-          title: 'engines.dsh 不是可读的 SemVer 范围', detail: '示例：">=0.2.0 <0.3.0"、"^0.2.1"、"*"。', file: 'package.json',
-          migration: { id: 'engines-dsh', title: '写入可读的 SemVer 范围', tool: 'dshpd_migrate' },
+          title: 'engines.dsh 不是合法的 SemVer 范围', detail: '按 node-semver 语法校验失败（例如 ">=0.2.0 <0.3.0"、"^0.2.1"、"*" 合法；"latest"、"0.2" 的裸写法并非全部合法）。', file: 'package.json',
+          migration: { id: 'engines-dsh', title: '写入合法的 SemVer 范围', tool: 'dshpd_migrate' },
         })
       } else if (harnessVersion !== null) {
         const satisfied = semverSatisfies(harnessVersion, range)
         official.compatibility.satisfied = satisfied
+        official.compatibility.checkedVersion = harnessVersion
         if (!satisfied) {
           push({
             id: 'ENGINES_DSH_UNSATISFIED', severity: 'CRITICAL', category: 'compat',
             title: '当前 Harness 版本不满足 engines.dsh',
             detail: '运行时 ' + harnessVersion + ' 不满足 ' + range + '；安装与启动都会被拒绝（可用 version exemption 逐版本放行）。',
             file: 'package.json',
+            confidence: 'verified-by-semver',
           })
         }
+      } else {
+        official.compatibility.satisfied = null
+        official.compatibility.reason = 'runtime version unknown'
+        push({
+          id: 'ENGINES_DSH_RUNTIME_UNKNOWN', severity: 'MEDIUM', category: 'compat',
+          title: '无法确认运行时版本，engines.dsh 未验证',
+          detail: '没有可信的运行时版本来源；兼容性结论为 UNKNOWN，不能当作已通过。请在目标 DSH 中运行，或显式传入用于模拟的 harnessVersion。',
+          file: 'package.json',
+          confidence: 'unknown',
+        })
       }
     }
   } else if (pkg !== null && dshPeers.length === 0) {
@@ -773,13 +789,9 @@ export function analyzeModel(model) {
       }
     }
     const hostExport = exportsField === null ? null : resolveExportTarget(exportsField, '.')
-    if (hostExport === null && !nonEmptyString(pkg.main)) {
-      push({
-        id: 'HOST_EXPORT_MISSING', severity: 'HIGH', category: 'manifest',
-        title: '缺少 Host 入口（exports["."] 或 main）',
-        detail: 'client 包也必须有 Host 半体入口：行按包名导入它，空实现也要有 exports["."]。',
-        file: 'package.json',
-      })
+    if (hostExport === null && !nonEmptyString(pkg.main) && official.host.entryPresent !== true) {
+      // Covered by HOST_ENTRY_MISSING above; kept as a role-specific hint only
+      // when the general check could not run.
     }
     if (official.client.platform !== 'web') {
       push({
@@ -832,11 +844,12 @@ export function analyzeModel(model) {
       && model.clientSourceMtimeMax > model.clientBundleMtime + 1500) {
       official.client.buildStale = true
       push({
-        id: 'CLIENT_BUILD_STALE', severity: 'HIGH', category: 'client',
+        id: 'CLIENT_BUILD_STALE', severity: 'MEDIUM', category: 'client',
         title: 'client 源码比构建产物新（UI 可能还是旧版本）',
         detail: 'src/client 的最后修改时间晚于 ' + String(clientExport === null ? model.defaultClientBundlePath : clientExport.target)
-          + '；修改源码后必须重新构建 lib/client.js，否则页面加载的仍是旧 UI。',
+          + '；这只是时间戳提示，不是产物一致性证明。修改源码后必须重新构建 lib/client.js，否则页面加载的仍是旧 UI。',
         file: String(clientExport === null ? model.defaultClientBundlePath : clientExport.target),
+        confidence: 'hint',
       })
     }
     if (model.clientBundleExists === true && !official.client.applyPresent) {
@@ -991,6 +1004,26 @@ export function analyzeModel(model) {
         file: null,
       })
     }
+    // What the BUILT bundle actually requires is the runtime truth; a missing
+    // external here is a real "works in dev, breaks in the package" failure.
+    const bundleRequires = new Set()
+    for (const match of String(model.clientBundleRaw || '').matchAll(/\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+      const specifier = match[1]
+      if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('node:')) continue
+      bundleRequires.add(specifier)
+    }
+    const builtinish = /^(?:react|react-dom|react\/jsx-runtime|react-dom\/client|zod|@deepseek-ai\/cordis)$/
+    for (const specifier of bundleRequires) {
+      if (CLIENT_BASELINE.has(specifier) || requested.has(specifier) || builtinish.test(specifier)) continue
+      if (specifier === official.packageName || (official.packageName !== null && specifier.startsWith(official.packageName + '/'))) continue
+      push({
+        id: 'CLIENT_BUNDLE_UNDECLARED_REQUIRE', severity: 'HIGH', category: 'client',
+        title: '构建产物 require 了未声明的外部模块',
+        detail: 'lib/client.js 运行时 require("' + specifier + '")，但它既不在平台基线，也不在 dsh.client.external。开发环境可能靠 node_modules 解析成功，安装到别的 DSH 后会直接失败。',
+        file: String(clientExport === null ? model.defaultClientBundlePath : clientExport.target),
+        confidence: 'verified',
+      })
+    }
   } else if (model.clientBundleExists === true || model.defaultClientBundleExists === true) {
     push({
       id: 'CLIENT_NOT_DECLARED', severity: 'HIGH', category: 'client',
@@ -1017,6 +1050,9 @@ export function analyzeModel(model) {
   }
   const usesFs = nonTestSources.some((file) => typeof file.content === 'string' && /ctx\s*\.\s*fs\b/.test(file.content))
   const usesAgentCtx = nonTestSources.some((file) => typeof file.content === 'string' && /exec\s*\.\s*agent|agent\s*\.\s*ctx/.test(file.content))
+  official.host.usesWebServer = usesWebServer
+  official.host.injectsWebServer = injectsWebServer
+  official.host.hardInjectsFs = tokens.has('fs') && usesFs && !usesAgentCtx
   if (tokens.has('fs') && usesFs && !usesAgentCtx) {
     push({
       id: 'HOST_FS_HARD_INJECT', severity: 'MEDIUM', category: 'lifecycle',
@@ -1024,6 +1060,56 @@ export function analyzeModel(model) {
       detail: 'fs 是 agent 平面服务；host composition 中 inject: ["fs"] 可能永远等不到依赖。改为在工具执行时从 exec.agent.ctx.get("fs") 取。',
       file: null,
     })
+  }
+
+  // ---- host process-safety heuristics ----------------------------------
+  // These patterns cannot be proven safe or unsafe statically. They exist to
+  // stop a clean verdict: anything that can block or end the Host process is
+  // only decidable in an isolated runtime, so the result records that runtime
+  // verification is required and remains NOT_RUN until a runner supplies it.
+  const riskMarkers = [
+    {
+      id: 'PROCESS_EXIT_RISK', severity: 'CRITICAL',
+      pattern: /\bprocess\s*\.\s*(?:exit|abort)\s*\(/,
+      title: '源码可能直接结束宿主进程',
+      detail: 'process.exit()/process.abort() 会终止整个 DSH Host；任何 try/catch 与 Promise 超时都拦不住。必须在隔离进程中验证，或改为抛出错误。',
+    },
+    {
+      id: 'UNBOUNDED_LOOP_RISK', severity: 'HIGH',
+      pattern: /(?:while\s*\(\s*(?:true|1)\s*\)|for\s*\(\s*;\s*;\s*\))/,
+      title: '源码包含无退出条件的同步循环',
+      detail: '同步死循环会让 Host 事件循环永久失联；同一进程内的 timeout 不会生效。必须在隔离运行时中验证，或提供显式退出条件。',
+    },
+    {
+      id: 'UNBOUNDED_ALLOC_RISK', severity: 'HIGH',
+      pattern: /\b(?:Buffer\s*\.\s*alloc(?:Unsafe)?|new\s+(?:Array|Uint8Array|Float64Array))\s*\(\s*(?:0x[0-9a-fA-F]+|\d{7,})\s*\)/,
+      title: '源码存在超大内存分配',
+      detail: '大块内存分配可能触发 OOM 并结束 Host；应改为有界分块或流式处理，并在隔离运行时中验证上限。',
+    },
+    {
+      id: 'SYNC_MICROTASK_STARVATION', severity: 'MEDIUM',
+      pattern: /(?:process\s*\.\s*nextTick|queueMicrotask)\s*\(\s*(?:function\s*\([^)]*\)|\([^)]*\)\s*=>)\s*\{?[^}]{0,200}\b(?:process\s*\.\s*nextTick|queueMicrotask)\b/s,
+      title: '疑似递归微任务',
+      detail: '递归 nextTick/queueMicrotask 会饿死 I/O 与心跳；静态规则只能提示，须由隔离运行时验证取消与回收。',
+    },
+  ]
+  for (const file of sourceFiles) {
+    if (!isPlainObject(file) || typeof file.content !== 'string') continue
+    if (isTestSource(file.relative || file.path)) continue
+    const content = file.content
+    for (const marker of riskMarkers) {
+      if (!marker.pattern.test(content)) continue
+      official.runtimeVerification.required = true
+      if (!official.runtimeVerification.reasons.includes(marker.id)) official.runtimeVerification.reasons.push(marker.id)
+      push({
+        id: marker.id, severity: marker.severity, category: 'lifecycle',
+        title: marker.title, detail: marker.detail, file: String(file.relative || file.path),
+        confidence: 'heuristic', requiresIsolatedRuntime: true,
+      })
+    }
+  }
+  if (official.runtimeVerification.required) {
+    official.runtimeVerification.status = 'NOT_RUN'
   }
 
   // ---- removed runtime invariants (0.2.0) ------------------------------

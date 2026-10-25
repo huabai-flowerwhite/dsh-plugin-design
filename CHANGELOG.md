@@ -1,5 +1,148 @@
 # Changelog
 
+## 1.4.3 — 2026-10-25
+
+真实渲染器错误提示修复。
+
+### Fixed
+
+- 扫描一个不可读/不存在的目录时，设置页只显示 `HTTP 200`：`/discover` 在
+  `ok:false` 时没有 `error` 字段，客户端回退成状态码。现在优先使用
+  `error`，其次使用 `scan.reasons`（例如 `扫描未完成：ROOT_UNREADABLE`），
+  最后才回退到状态码。
+- 真实 Chromium 复测：扫描测试目录 → 分析 → 问题/结论渲染正常 → 非法路径
+  显示可读原因；无 console 异常。
+
+## 1.4.2 — 2026-10-25
+
+真实渲染器回归发现并修复一个 rc.3 Client 崩溃；补上真实 Chromium 证据。
+
+### Fixed
+
+- **`FindingList` 在真实渲染器中崩溃**：`h(...).concat(...)` 把 React element
+  当数组调用，只要有分析结果（issues > 0）就抛出
+  `TypeError: h(...).concat is not a function`，设置页槽位整体空白。
+  此前所有测试只做源码/产物与 React stub 检查，没有触发这条渲染路径。
+  现在先构造 children 数组再交给 `h()`，并使用稳定的 key。
+- 回归保护：`client-build.test.mjs` 增加“client 源码不得对 `h()` 结果调用
+  `.concat(`”的检查，防止同类写法回归。
+
+### Added
+
+- **真实 Chromium renderer 验证**（rc.3 Web Host）：在无头 Chrome 中打开真实
+  rc.3 Web UI → 进入设置 → “dsh plugin design”页签 → 扫描测试目录 → 列表出现
+  5 个 fixture → 点击“分析” → 结果/问题正常渲染 → 非法路径错误提示；
+  同时读取 `/dsh-plugin-design/health` 确认 `activated=true, rendered=true`。
+  这是真实浏览器渲染，不是 React stub；仍**不是** Desktop 窗口/preload。
+- 证据与脚本位于 `updates/dsh-0.2.1-rc.3/evidence/browser-renderer/`。
+
+### Changed
+
+- 版本 1.4.2；rc.3 Host/安装/重启/卸载证据重新绑定到新包。
+- 真实 Desktop 窗口仍为 `NOT_RUN`（单实例锁，未触碰用户真实 profile）。
+
+## 1.4.1 — 2026-10-25
+
+DSH Desktop `0.2.1-rc.3`（发布标签 `dsh-v0.2.1-rc.3`，提交 `1f81c04`）增量兼容。
+
+### Fixed
+
+- **部署适配不再要求 `updateBundle`/`listVersions`。** 实际安装的 rc.3 发布版
+  plugin-manager 只公开 `listBundles` / `listPlugins` / `installBundle` /
+  `removeBundle` / `setBundleEnabled` / `setPluginEnabled` / `inspect` /
+  `registries` / `waitForInstall` / `cancelInstall`；旧适配器把
+  `updateBundle` 列为必需，会把整个官方管理器误判为不可用。
+  现在必需能力是 `listBundles` + `installBundle` + `removeBundle` +
+  `setBundleEnabled`，其余逐项探测并报告 `UNSUPPORTED`；安装/移除仍只走官方
+  事务，缺失能力时明确拒绝，不写 profile。
+- 适配器输出新增 `required`、`missingRequired`、`optional`、`capabilities`
+  （install/remove/enable/update/versionDiscovery/…）与 `unsupported[]`，并在
+  `dshpd_mount`、`dshpd_status`、`/info` 中原样展示；`updateBundle` 缺失时的
+  受支持更新路径为“带精确 spec 的 `installBundle` 或官方 CLI”。
+
+### Changed
+
+- `dshpd_ui_check` 明确报告 rc.3 的 client-modules **metadata 负缓存**：
+  “非 Client 包”的结论按 loader specifier + baseUrl 缓存，直到 Host/Desktop
+  重启才失效；清单、`dsh.client`、`exports["./client"]` 或入口变化后只刷新
+  页面/HMR 不够。`dshpd_verify` 的 `CLIENT_GRAPH` 失败详情同样提示整机重启。
+- 文档补充 rc.3 发布版与后续研究分支的能力差异（Manager 方法、Client
+  metadata 缓存），不把研究分支接口当作已发布能力。
+
+### Verified
+
+- rc.3 Desktop 安装：`E:\运行包\DSHpc`，Desktop / 内嵌 runtime / app-boot /
+  CLI / desktop-host / plugin-manager / client-modules 均为 `0.2.1-rc.3`，
+  Electron 44.7.0、Node 24.21.0、win32-x64；`app.asar` SHA-256
+  `04b32e3a…eff1f0`。旧 `DSHpc.new-{GUID}` 目录才是 rc.2。
+- 测试增至 99 项（新增 7 项适配器能力协商回归）。
+- rc.3 配套 CLI、全新 `DSH_HOME` 下维护插件与最小 Host+Client 目标插件的
+  安装/冷启动/功能探测/重启/卸载证据见
+  `updates/dsh-0.2.1-rc.3/`（Host 与真实 Desktop renderer 分开记录）。
+
+## 1.4.0 — 2026-10-25
+
+安全、证据与独立分发版本。目标：不再越权写 profile、不把失败报成功、不靠无界同步
+扫描拖住 Host，并让被改造的插件能在没有本插件的干净 DSH 环境独立安装。
+
+### Security / correctness (breaking behaviour)
+
+- `dshpd_mount` 不再直接写 `profiles/*/cordis.patch.yml`：只调用官方
+  `pluginManager`（installBundle/removeBundle/setBundleEnabled/updateBundle），
+  服务缺失时仅返回 dry-run + 官方命令；包名先做 npm 名称校验再进入 YAML。
+- 新增 `dshpd_plan`。`dshpd_approve` 必须回传同一 `planHash`；receipt 绑定
+  design 哈希、文件基线、操作集合、目标 profile、agent/session、有效期与使用次数。
+  设计/文件/计划变化即失效；跨会话/跨 agent 复用被拒绝。
+  授权走官方 `ctx.get('approval')`（仅 `allowed-once`），或已在
+  `danger-full-access` 预设下按部署授权并记录依据；更窄沙箱 + `never` 不签发 token。
+- 快照 schema 2：原始字节、presence、size、SHA-256、编码与捕获版本；任一文件
+  失败则整次不提交。状态目录移到 `$DSH_HOME/plugin-design-state`，位于被审插件之外。
+- `dshpd_rollback` 先校验全部 payload 哈希；不覆盖用户已改文件（`ROLLBACK_CONFLICT`），
+  部分失败为 `ROLLBACK_PARTIAL`，只有全部恢复并重新哈希才 `ROLLED_BACK`；
+  需要 `confirmBackupId` 显式确认。
+- `dshpd_apply`/`dshpd_write`/`dshpd_migrate` 使用 fs 版本守卫 + 批准基线哈希，
+  删除 `allowStale` 静默覆盖；journal 先 prepare 后 commit，commit 失败单独报告。
+- `dshpd_verify` 分层：snapshot/static/authorization/deployment/runtime；任一 FAIL
+  即失败，缺证据为 `INCOMPLETE`；`ok=true` 仅代表 `status=PASS`。新增
+  `intent=local-modification|deployment`，部署意图才要求 profile/graph/health。
+
+### Added
+
+- Worker 扫描（`src/scan/`）：单文件/总字节/文件/目录/墙钟预算、并发队列、
+  取消与终止；超限/超时显式 `INCOMPLETE`，不再静默截断。检查真实 Host/Client
+  入口与 `lib/dist` 构建产物，输出 coverage。
+- 官方 SemVer 语义（`src/semver.js` + 435 例 semver 7.8.5 差分 fixture）。
+- 运行时指纹（asar app-boot 版本、carrier、capabilities、service realm）。
+- `dshpd_ui_check` 分层 served/registered/activated/rendered；新增
+  `POST /dsh-plugin-design/client-health` 与 `GET /dsh-plugin-design/health`。
+- `dshpd_write`（创建/替换）、`dshpd_distribute`（审计/导出）、
+  `dshpd_validate`（隔离包加载 / 真实 dsh-host 矩阵）。
+- 独立恢复 CLI `bin/dshpd-recover.mjs`：不 import Host/rules/被审插件；
+  list/verify/preview/restore/operations/undo-enable，退出码 0/1/2/64。
+- 分发包审计与导出：入口/chunk/assets/worker、可移植性、依赖闭包、维护私有数据、
+  公共文档；确定性 `.tgz`、SHA-256、FILELIST、SUPPORT-MATRIX、BUILD-LOCK、
+  distribution-report（发布状态始终为未上传）。
+- `dshpd_design` 目标分类与 Host/Client 必要性矩阵；无 UI 需求不自动创建 Client；
+  不再默认 desktop；增加独立分发义务章节。
+- `SUPPORT-MATRIX.md`、`docs/security-model.md`、`docs/distribution-contract.md`。
+
+### Fixed
+
+- `install.ps1` 把 stdout 与退出码混为返回值；现在只返回整数退出码，失败不再
+  remove 已安装版本，link 模式必须显式 `-Link`。`install.sh` 同步。
+- `engines.dsh` 合法性用范围语法判断（`*` 合法、空范围不通过）；运行时未知为
+  UNKNOWN；`dshpd_migrate engines-dsh` 必须显式范围，不再自动扩大。
+- 扫描不再跳过 `lib`；不可读/超限/截断有明确 coverage 记录。
+
+### Tests
+
+- 92 个测试/子测试：计划绑定、身份、design 漂移、越界/junction、CAS、部分快照、
+  篡改回滚、冲突、journal 恢复、worker 预算/取消/心跳、SemVer 差分、部署适配、
+  分发审计与负例、隔离包加载、离线恢复、安装器退出码。
+- 真实环境：在全新 `DSH_HOME` 中用官方 CLI 安装 `dsh-plugin-design-1.4.0.tgz`
+  与 Host+Client 最小目标包，验证冷启动/路由/重启/卸载/再次启动；见
+  `SUPPORT-MATRIX.md` 与 `outputs/independent-validation/`。
+
 ## 1.3.2 — 2026-10-23
 
 补齐“服务名对、取值时机错”这一类静默失效：apply 时取到 `undefined`，被 `typeof` 固化成 `null`。

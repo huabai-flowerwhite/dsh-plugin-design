@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "mode": "dsh-host",
+  "runId": "dsh-host-6b656d91-7678-4bac-bc4c-826e2bdce3b4",
+  "cli": [
+    "E:/运行包/DSHpc/DeepSeek Harness.exe",
+    "--expose-internals",
+    "E:/运行包/DSHpc/resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js"
+  ],
+  "dshHome": "E:\\creat\\Codex\\dsh设计插件优化建议\\updates\\dsh-0.2.1-rc.3\\validation\\target-plugin\\state\\validation\\dsh-host-6b656d91-7678-4bac-bc4c-826e2bdce3b4\\home",
+  "steps": [
+    {
+      "step": "install",
+      "args": [
+        "plugin",
+        "--profile",
+        "web",
+        "add",
+        "E:\\creat\\Codex\\dsh设计插件优化建议\\updates\\dsh-0.2.1-rc.3\\artifacts\\dshpd-demo-plugin-1.0.0.tgz"
+      ],
+      "code": 0,
+      "timedOut": false,
+      "stdout": "[WARN] The store at C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11 is not used because packages cannot be hard linked from it into this project. Using the store at E:\\.pnpm-store\\v11 instead. Set storeDir to choose the store.\nProgress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: E:\\.pnpm-store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dshpd-demo-plugin 1.0.0\n\nDone in 1s using pnpm v11.28.5\n",
+      "stderr": "dsh: initialized profile web at E:\\creat\\Codex\\dsh设计插件优化建议\\updates\\dsh-0.2.1-rc.3\\validation\\target-plugin\\state\\validation\\dsh-host-6b656d91-7678-4bac-bc4c-826e2bdce3b4\\home\\profiles\\web\n"
+    },
+    {
+      "step": "boot-cold-start",
+      "args": [
+        "web",
+        "--no-open",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0"
+      ],
+      "urlFound": true,
+      "probe": {
+        "path": "/dshpd-demo/health",
+        "status": 200,
+        "ok": true,
+        "body": "{\"ok\":true,\"plugin\":\"dshpd-demo-plugin\"}"
+      },
+      "stdout": "dsh web: http://127.0.0.1:53954/?token=[redacted]\n",
+      "stderr": ""
+    },
+    {
+      "step": "boot-restart",
+      "args": [
+        "web",
+        "--no-open",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0"
+      ],
+      "urlFound": true,
+      "probe": {
+        "path": "/dshpd-demo/health",
+        "status": 200,
+        "ok": true,
+        "body": "{\"ok\":true,\"plugin\":\"dshpd-demo-plugin\"}"
+      },
+      "stdout": "dsh web: http://127.0.0.1:50895/?token=[redacted]\n",
+      "stderr": ""
+    },
+    {
+      "step": "uninstall",
+      "args": [
+        "plugin",
+        "--profile",
+        "web",
+        "remove",
+        "dshpd-demo-plugin"
+      ],
+      "code": 0,
+      "timedOut": false,
+      "stdout": "[WARN] The store at C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11 is not used because packages cannot be hard linked from it into this project. Using the store at E:\\.pnpm-store\\v11 instead. Set storeDir to choose the store.\n✓ Lockfile passes supply-chain policies (verified 12s ago)\nAlready up to date\n\ndependencies:\n- dshpd-demo-plugin 1.0.0\n\nDone in 460ms using pnpm v11.28.5\n",
+      "stderr": ""
+    },
+    {
+      "step": "boot-after-uninstall",
+      "args": [
+        "web",
+        "--no-open",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "0"
+      ],
+      "urlFound": true,
+      "probe": {
+        "path": "/dshpd-demo/health",
+        "status": 404,
+        "ok": false,
+        "body": ""
+      },
+      "stdout": "dsh web: http://127.0.0.1:51634/?token=[redacted]\n",
+      "stderr": ""
+    }
+  ],
+  "gates": {
+    "cleanInstall": {
+      "status": "PASS",
+      "detail": "cold start served /dshpd-demo/health with HTTP 200"
+    },
+    "distributionLifecycle": {
+      "status": "PASS",
+      "detail": {
+        "restartProbe": {
+          "path": "/dshpd-demo/health",
+          "status": 200,
+          "ok": true,
+          "body": "{\"ok\":true,\"plugin\":\"dshpd-demo-plugin\"}"
+        },
+        "uninstallExit": 0,
+        "hostStartedAfterUninstall": true,
+        "pluginRouteGoneAfterUninstall": true
+      }
+    }
+  },
+  "verified": true,
+  "status": "PASS",
+  "finishedAt": "2026-10-25T07:11:57.702Z"
+}

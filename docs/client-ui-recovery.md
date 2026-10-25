@@ -1,17 +1,43 @@
-# Client UI 恢复指南（DSH 0.1.5 → 0.2.1）
+# Client UI 恢复指南（基线 0.2.1-rc.3）
 
 > 适用：插件原来有设置页 / 悬浮层 / 背景 / 工具卡片，DSH 升级或修改后 UI 不再出现；也适用于给**原本没有 UI** 的插件新增 UI。
-> 工具：`dshpd_ui_check`（静态 + 运行中 client graph）、`dshpd_analyze`、`dshpd_verify`。
+> 工具：`dshpd_ui_check`（分层：bundle → graph → 激活/渲染回执）、`dshpd_analyze`、`dshpd_verify`。
+
+## 0.0 rc.3 的 metadata 负缓存（先读）
+
+DSH `0.2.1-rc.3` 的 `client-modules` 在 `resolveMeta(loaderName, baseUrl)` 中按
+`loader specifier + baseUrl` 缓存包元数据，并把 `null`（“不是 Client 包”）也写入
+缓存。该缓存要到 **Host/Desktop 重启**才失效：
+
+- 新安装带 Client 的包、给已有包补 `dsh.client` / `exports["./client"]`，或修改
+  入口文件后，只刷新页面、只做 HMR、只重装 Client bundle 都**不会**让旧负结果
+  消失。
+- 正确步骤：完成清单/文件修改 → 重启整个 Desktop（或对应 Host）→ 再运行
+  `dshpd_ui_check`，确认 `inGraph=true`，并等待 Client 半体的 `rendered` 回执。
+- `dshpd_ui_check` 会在 `metadataCache` 字段说明缓存范围、键与失效方式；
+  `inGraph=false` 的 `reason` 与 `dshpd_verify` 的 `CLIENT_GRAPH` 失败详情也会
+  提示整机重启。这是 rc.3 发布版行为，不套用后续研究分支“重协调时重新读取”的结论。
+
+## 0.1 1.4.0 的分层证据（先读）
+
+`dshpd_ui_check` 不再把 `inGraph=true` 当成“UI 正常”。它分别报告：
+
+| 阶段 | 证据 | 说明 |
+|---|---|---|
+| served | `clientPath` 存在 | 只是文件在 |
+| registered | 运行中 client module graph 有该包 | Loader 愿意提供模块 |
+| activated | Client 半体上报 `activated=true` | 模块体已执行、apply 完成 |
+| rendered | Client 半体上报 `rendered=true` | 面板已渲染（插件自己上报，非官方通道） |
+
+没有新鲜回执时状态是 `UNKNOWN`，不是 PASS。回执通过
+`POST /dsh-plugin-design/client-health` 发送，保留 10 分钟。
+`buildStale` 只是 mtime 提示，不能证明产物新旧。
 
 ## 0. 插件原本没有 UI
 
-`dshpd_design` 默认 `ui: "auto"`。检测到没有 `dsh.client` 时，它会：
-
-- 在 `design.md` 增加「UI 方案建议」：入口（默认 `settings.section`）、文字线框、页面区块、数据/路由、实现清单；
-- 在工具结果返回 `ui.wireframe` / `ui.userMessage` / `ui.sections` / `ui.dataPlan` / `ui.summary`，供 Agent 先向用户描述 UI 大致样貌；
-- 写入 `design.meta.json`（`ui.expected=true`）；后续 `dshpd_verify` 会检查 `dsh.client` 是否真的实现。
-
-如果不需要 UI，调用时传 `ui: "off"`，或在 design 审核阶段明确告诉 Agent “不做 UI”。
+`dshpd_design` 默认 `ui: "auto"`：只有目标确实有用户可见配置/状态时才会提议新增
+UI；纯工具、库、规则包默认给出 `uiMode=not-needed`，**不会自动创建 Client 半体**。
+需要强制提议时传 `ui: "propose"`；不需要时传 `ui: "off"`。
 
 ## 1. 先确认“运行中的页面到底有没有它”
 

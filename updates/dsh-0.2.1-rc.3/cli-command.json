@@ -1,0 +1,5 @@
+[
+  "E:/运行包/DSHpc/DeepSeek Harness.exe",
+  "--expose-internals",
+  "E:/运行包/DSHpc/resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js"
+]

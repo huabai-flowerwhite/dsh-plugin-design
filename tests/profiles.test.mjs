@@ -1,95 +1,87 @@
-import test from 'node:test'
+// Read-only profile inspection and the removed direct-write path.
+
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import {
-  ensureDesktopMount,
-  inspectDeployment,
-  mountRowYaml,
-  parseMountRows,
+  ensureDesktopMount, homePatchLayer, inspectDeployment, inspectProfile, mountRowYaml, parseMountRows,
 } from '../src/profiles.js'
+import { tempDir, writeProfile } from './helpers/harness.mjs'
 
-function makeHome() {
-  const home = mkdtempSync(join(tmpdir(), 'dshpd-profile-'))
-  mkdirSync(join(home, 'profiles', 'desktop'), { recursive: true })
-  mkdirSync(join(home, 'profiles', 'web'), { recursive: true })
-  return home
-}
-
-function installPackage(home, profile, name) {
-  const dir = join(home, 'profiles', profile, 'node_modules', name)
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version: '1.0.0' }), 'utf8')
-}
-
-test('parseMountRows reads inserted ids and display names', () => {
+test('parseMountRows reads insert rows, overrides, names and disabled flags', () => {
   const rows = parseMountRows([
     '- insert:',
-    '    - id: ui-settings',
-    "      name: 'Settings'",
-    '    - id: dsh-ui-skin',
-    "      name: 'UI 皮肤'",
-    '',
+    '    - id: alpha',
+    "      name: 'Alpha plugin'",
+    '    - id: beta',
+    '      disabled: true',
+    '- id: gamma',
+    "  name: 'Gamma'",
   ].join('\n'))
-  assert.deepEqual(rows.map((row) => row.id), ['ui-settings', 'dsh-ui-skin'])
-  assert.equal(rows[1].name, 'UI 皮肤')
+  assert.deepEqual(rows.map((row) => row.id), ['alpha', 'beta', 'gamma'])
+  assert.equal(rows[0].name, 'Alpha plugin')
+  assert.equal(rows[1].disabled, true)
+  assert.equal(rows[2].disabled, false)
 })
 
-test('deployment detects desktop/web mounts and package resolution separately', () => {
-  const home = makeHome()
-  writeFileSync(join(home, 'profiles', 'desktop', 'cordis.patch.yml'), [
-    '- insert:',
-    '    - id: dsh-plugin-design',
-    "      name: 'dsh-plugin-design'",
-    '',
-  ].join('\n'), 'utf8')
-  writeFileSync(join(home, 'profiles', 'web', 'cordis.patch.yml'), [
-    '- insert:',
-    '    - id: dsh-plugin-manager',
-    "      name: 'dsh-plugin-manager'",
-    '',
-  ].join('\n'), 'utf8')
-  installPackage(home, 'desktop', 'dsh-plugin-design')
-  installPackage(home, 'web', 'dsh-plugin-manager')
-
-  const design = inspectDeployment('dsh-plugin-design', { dshHome: home })
-  assert.equal(design.desktop.mounted, true)
-  assert.equal(design.desktop.packageResolvable, true)
-  assert.equal(design.web.mounted, false)
-
-  const manager = inspectDeployment('dsh-plugin-manager', { dshHome: home })
-  assert.equal(manager.desktop.mounted, false)
-  assert.equal(manager.web.mounted, true)
-  assert.equal(manager.needsDesktopMount, true)
-  assert.match(manager.mountRow, /- id: dsh-plugin-manager/)
+test('deployment reports installed, selected and enabled as different states', () => {
+  const dshHome = tempDir('dshpd-profiles-')
+  writeProfile(dshHome, 'desktop', {
+    rows: ["- insert:\n    - id: demo\n      name: 'demo'"],
+    packages: { demo: '1.0.0' },
+  })
+  writeProfile(dshHome, 'web', {
+    rows: ["- insert:\n    - id: demo\n      name: 'demo'\n      disabled: true"],
+  })
+  const deployment = inspectDeployment('demo', { dshHome })
+  assert.equal(deployment.installedAnywhere, true)
+  assert.equal(deployment.selectedAnywhere, true)
+  assert.equal(deployment.enabledAnywhere, true)
+  const desktop = deployment.profiles.find((profile) => profile.profile === 'desktop')
+  const web = deployment.profiles.find((profile) => profile.profile === 'web')
+  assert.equal(desktop.selected, true)
+  assert.equal(desktop.enabled, true)
+  assert.equal(web.selected, true)
+  assert.equal(web.enabled, false)
+  assert.equal(web.packageResolvable, false)
 })
 
-test('ensureDesktopMount is a dry run by default and backs up before applying', () => {
-  const home = makeHome()
-  const patchPath = join(home, 'profiles', 'desktop', 'cordis.patch.yml')
-  writeFileSync(patchPath, '- insert:\n    - id: ui-settings\n', 'utf8')
-  installPackage(home, 'desktop', 'demo-plugin')
+test('the home patch layer is reported separately from profile patches', () => {
+  const dshHome = tempDir('dshpd-home-layer-')
+  writeFileSync(join(dshHome, 'cordis.patch.yml'), '- id: demo\n  disabled: true\n', 'utf8')
+  const layer = homePatchLayer(dshHome)
+  assert.equal(layer.exists, true)
+  assert.equal(layer.rows.length, 1)
+  assert.equal(layer.rows[0].disabled, true)
+})
+
+test('mountRowYaml refuses an invalid package name and escapes the label', () => {
+  assert.throws(() => mountRowYaml('evil\n- remove: core', 'x'), /refusing to render/)
+  assert.throws(() => mountRowYaml('Has Space', 'x'), /refusing to render/)
+  const scoped = mountRowYaml('@scope/demo', "O'Brien")
+  assert.match(scoped, /- id: @scope\/demo/)
+  assert.match(scoped, /name: 'O''Brien'/)
+  assert.equal(scoped.trim().split('\n').filter((line) => line.startsWith('- insert:')).length, 1)
+})
+
+test('ensureDesktopMount is a hard failure now and never writes a profile', () => {
+  const dshHome = tempDir('dshpd-no-write-')
+  const profileDir = writeProfile(dshHome, 'desktop', { rows: ['- insert:\n    - id: other'] })
+  const patchPath = join(profileDir, 'cordis.patch.yml')
   const before = readFileSync(patchPath, 'utf8')
-
-  const dry = ensureDesktopMount('demo-plugin', { dshHome: home })
-  assert.equal(dry.applied, false)
-  assert.equal(dry.dryRun, true)
-  assert.match(dry.append, /- id: demo-plugin/)
+  const result = ensureDesktopMount('demo', { dshHome, apply: true })
+  assert.equal(result.applied, false)
+  assert.equal(result.error, 'DEPRECATED_WRITE_PATH')
   assert.equal(readFileSync(patchPath, 'utf8'), before)
-
-  const applied = ensureDesktopMount('demo-plugin', { dshHome: home, apply: true })
-  assert.equal(applied.applied, true)
-  assert.equal(existsSync(applied.backupPath), true)
-  assert.match(readFileSync(patchPath, 'utf8'), /- id: demo-plugin/)
-  assert.equal(inspectDeployment('demo-plugin', { dshHome: home }).desktop.mounted, true)
-
-  const again = ensureDesktopMount('demo-plugin', { dshHome: home, apply: true })
-  assert.equal(again.applied, false)
-  assert.equal(again.alreadyMounted, true)
 })
 
-test('mountRowYaml escapes single quotes in display names', () => {
-  assert.match(mountRowYaml('demo-plugin', "Demo's UI"), /name: 'Demo''s UI'/)
+test('inspectProfile tolerates a missing patch and reports it as unselected', () => {
+  const dshHome = tempDir('dshpd-missing-patch-')
+  mkdirSync(join(dshHome, 'profiles', 'web'), { recursive: true })
+  const profile = inspectProfile(dshHome, 'web', 'demo')
+  assert.equal(profile.patchExists, false)
+  assert.equal(profile.selected, false)
+  assert.equal(profile.packageResolvable, false)
 })

@@ -1,151 +1,23 @@
-// Host-half tests: tool registration, route registration, analyzer against
-// fixtures, and the full approval → backup → apply → verify → rollback flow
-// plus manifest migrations. Uses a node:fs-backed mock of the harness ctx.fs
-// contract (resolve returns a target object; readText/editText take targets).
+// Host-half regressions: tool/route registration, worker-backed analysis,
+// classification, UI health receipts and the read-only settings routes.
 
-import { test, after } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync,
-  statSync, writeFileSync,
-} from 'node:fs'
-import { dirname, join } from 'node:path'
-import { tmpdir } from 'node:os'
-import { fileURLToPath } from 'node:url'
+import { cpSync } from 'node:fs'
+import { join } from 'node:path'
 
-import host from '../src/host.js'
+import { createHarness, tempDir } from './helpers/harness.mjs'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const FIXTURES = join(here, 'fixtures')
-const temporaryRoots = []
-
-after(() => {
-  for (const root of temporaryRoots) rmSync(root, { recursive: true, force: true })
-})
-
-function targetPath(target) {
-  return typeof target === 'string' ? target : target.displayPath
-}
-
-function createFs() {
-  return {
-    async resolve(target) { return { displayPath: target } },
-    async readText(target) {
-      try { return readFileSync(targetPath(target), 'utf8') } catch (error) { return null }
-    },
-    async writeText(target, content) {
-      mkdirSync(dirname(targetPath(target)), { recursive: true })
-      writeFileSync(targetPath(target), content, 'utf8')
-      return { bytes: Buffer.byteLength(content, 'utf8') }
-    },
-    async editText(target, edit) {
-      const before = readFileSync(targetPath(target), 'utf8')
-      const matches = before.split(edit.oldString).length - 1
-      if (matches === 0) throw new Error('oldString not found')
-      if (matches > 1 && edit.replaceAll !== true) throw new Error('oldString matched ' + matches + ' times')
-      const after = before.split(edit.oldString).join(edit.newString)
-      writeFileSync(targetPath(target), after, 'utf8')
-      return { before, after }
-    },
-    async listDir(target) {
-      return readdirSync(targetPath(target), { withFileTypes: true }).map((entry) => ({
-        name: entry.name,
-        type: entry.isDirectory() ? 'directory' : 'file',
-        // Mirror the real harness FsDirEntry: children carry a resolved target.
-        target: { displayPath: join(targetPath(target), entry.name) },
-      }))
-    },
-    async stat(target) {
-      try { return statSync(targetPath(target)) } catch (error) { return undefined }
-    },
-  }
-}
-
-function createHarness() {
-  const tools = new Map()
-  const routes = []
-  const fsService = createFs()
-  const sandboxPolicy = { resolve() { return undefined }, workspaceRoot: undefined }
-  const clientModules = {
-    graph() {
-      return {
-        rev: 'test-rev',
-        entries: [{ id: 'modern-plugin', rev: 'bundle-rev' }],
-      }
-    },
-    table: new Map([
-      ['modern-plugin', {
-        meta: {
-          clientPath: join(FIXTURES, 'modern-plugin', 'lib', 'client.js'),
-          inject: ['slots'],
-          external: [],
-          immediately: false,
-        },
-      }],
-    ]),
-    clientPath(name) {
-      const record = this.table.get(name)
-      return record === undefined ? undefined : record.meta.clientPath
-    },
-  }
-  const ctx = {
-    tools: {
-      register(definition) {
-        assert.equal(tools.has(definition.name), false, 'duplicate tool registration: ' + definition.name)
-        tools.set(definition.name, definition)
-        return () => tools.delete(definition.name)
-      },
-    },
-    get(name) {
-      if (name === 'fs') return fsService
-      if (name === 'sandboxPolicy') return sandboxPolicy
-      if (name === 'clientModules') return clientModules
-      return undefined
-    },
-    effect(callback) { return callback() },
-    inject(dependencies, callback) {
-      assert.deepEqual(dependencies, ['webServer'])
-      return callback({
-        webServer: {
-          register(route) { routes.push(route); return () => {} },
-        },
-        effect(fn) { return fn() },
-      })
-    },
-  }
-  host.apply(ctx)
-  // 0.2.x: fs and sandboxPolicy are agent-plane services, so tools receive
-  // them through exec.agent.ctx rather than the plugin context.
-  const exec = {
-    agent: {
-      id: 'test-agent',
-      ctx: {
-        get(name) {
-          if (name === 'fs') return fsService
-          if (name === 'sandboxPolicy') return sandboxPolicy
-          return undefined
-        },
-      },
-    },
-  }
-  return { tools, routes, exec }
-}
-
-function call(harness, name, args) {
-  const definition = harness.tools.get(name)
-  assert.ok(definition, 'tool missing: ' + name)
-  return definition.execute(args, harness.exec)
-}
+const FIXTURES = join('tests', 'fixtures')
 
 function copyFixture(name) {
-  const root = mkdtempSync(join(tmpdir(), 'dshpd-test-'))
-  temporaryRoots.push(root)
+  const root = tempDir('dshpd-host-')
   const work = join(root, 'plugin')
   cpSync(join(FIXTURES, name), work, { recursive: true })
   return work
 }
 
-function makeRouteRequest(method, url, body) {
+function makeRequest(method, url, body) {
   return {
     method,
     url,
@@ -155,7 +27,7 @@ function makeRouteRequest(method, url, body) {
   }
 }
 
-function makeRouteResponse() {
+function makeResponse() {
   return {
     statusCode: 200,
     headers: {},
@@ -165,275 +37,224 @@ function makeRouteResponse() {
   }
 }
 
-test('registers exactly 14 tools and 3 settings routes', () => {
+test('registers the documented tools and read-only settings routes', () => {
   const harness = createHarness()
-  assert.equal(harness.tools.size, 14)
-  assert.deepEqual([...harness.tools.keys()].sort(), [
-    'dshpd_analyze', 'dshpd_apply', 'dshpd_approve', 'dshpd_backup',
-    'dshpd_design', 'dshpd_discover', 'dshpd_inspect', 'dshpd_migrate', 'dshpd_mount',
-    'dshpd_report', 'dshpd_rollback', 'dshpd_status', 'dshpd_ui_check', 'dshpd_verify',
-  ])
-  assert.deepEqual(harness.routes.map((route) => route.path).sort(), [
-    '/dsh-plugin-design/analyze', '/dsh-plugin-design/discover', '/dsh-plugin-design/info',
-  ])
-  for (const route of harness.routes) assert.equal(route.kind, 'exact')
-})
-
-test('modern fixture is READY_TO_MODIFY under a 0.2.1 runtime', async () => {
-  const harness = createHarness()
-  const result = await call(harness, 'dshpd_analyze', {
-    pluginPath: join(FIXTURES, 'modern-plugin'),
-    harnessVersion: '0.2.1-rc.2',
-  })
-  assert.equal(result.overall, 'READY_TO_MODIFY')
-  assert.equal(result.official.compatibility.satisfied, true)
-  assert.equal(result.official.compatibility.source, 'engines.dsh')
-  assert.equal(result.official.bundle.declared, true)
-  assert.equal(result.official.client.factoryForm, true)
-  for (const severity of ['BLOCKER', 'CRITICAL', 'HIGH']) {
-    assert.equal(result.counts[severity], 0, severity + ' findings: ' + JSON.stringify(result.issues.filter((issue) => issue.severity === severity)))
-  }
-})
-
-test('legacy fixture accumulates the expected pre-0.2 findings', async () => {
-  const harness = createHarness()
-  const result = await call(harness, 'dshpd_analyze', { pluginPath: join(FIXTURES, 'legacy-plugin') })
-  const ids = new Set(result.issues.map((issue) => issue.id))
-  for (const expected of [
-    'ENGINES_DSH_MISSING', 'BUNDLE_NOT_DECLARED', 'CORE_ROW_REPLACE',
-    'GLOBALTHIS_PATCH', 'GLOBAL_MUTABLE_STATE', 'TOOL_NO_OUTPUT',
-    'MANIFEST_NO_ID', 'MANIFEST_NO_HARNESS',
-  ]) {
-    assert.ok(ids.has(expected), 'missing finding ' + expected + '; got ' + [...ids].join(','))
-  }
-  assert.equal(result.overall, 'BLOCKED')
-  assert.ok(result.migrations.some((migration) => migration.id === 'engines-dsh'))
-  assert.ok(result.migrations.some((migration) => migration.id === 'bundle-patch'))
-})
-
-test('removed 0.2.0 APIs are flagged as blockers', async () => {
-  const harness = createHarness()
-  const result = await call(harness, 'dshpd_analyze', { pluginPath: join(FIXTURES, 'removed-api-plugin') })
-  const ids = new Set(result.issues.map((issue) => issue.id))
-  for (const expected of ['INVARIANTS_DEP', 'INVARIANTS_IMPORT', 'SUBPATH_PACKAGE_JSON', 'ENGINES_DSH_MISSING']) {
-    assert.ok(ids.has(expected), 'missing finding ' + expected + '; got ' + [...ids].join(','))
-  }
-  assert.equal(result.overall, 'BLOCKED')
-})
-
-test('discover finds all fixtures and reports their official roles', async () => {
-  const harness = createHarness()
-  const result = await call(harness, 'dshpd_discover', { root: FIXTURES, maxDepth: 3 })
-  assert.ok(result.count >= 3)
-  const modern = result.plugins.find((plugin) => plugin.name === 'modern-plugin')
-  assert.ok(modern)
-  assert.equal(modern.bundle, true)
-  assert.equal(modern.client, true)
-  assert.equal(modern.enginesDsh, '>=0.1.5-rc.1 <0.3.0')
-})
-
-test('approval → backup → apply → verify → report → rollback restores the file', async () => {
-  const harness = createHarness()
-  const work = copyFixture('modern-plugin')
-  const readme = join(work, 'README.md')
-  const packageJson = join(work, 'package.json')
-  const original = readFileSync(readme, 'utf8')
-
-  const approval = await call(harness, 'dshpd_approve', {
-    pluginPath: work,
-    designPath: join(work, '.dsh-plugin-design', 'design.md'),
-  })
-  assert.ok(approval.approvalToken)
-  const backup = await call(harness, 'dshpd_backup', {
-    approvalToken: approval.approvalToken,
-    files: [readme, packageJson],
-  })
-  assert.equal(backup.failed, 0)
-  assert.equal(backup.backedUp, 2)
-
-  const dryRun = await call(harness, 'dshpd_apply', {
-    approvalToken: approval.approvalToken,
-    backupId: backup.backupId,
-    filePath: readme,
-    oldText: '# modern-plugin (fixture)',
-    newText: '# modern-plugin (edited)',
-    dryRun: true,
-  })
-  assert.equal(dryRun.matches, 1)
-
-  const applied = await call(harness, 'dshpd_apply', {
-    approvalToken: approval.approvalToken,
-    backupId: backup.backupId,
-    filePath: readme,
-    oldText: '# modern-plugin (fixture)',
-    newText: '# modern-plugin (edited)',
-  })
-  assert.equal(applied.applied, true)
-  assert.match(readFileSync(readme, 'utf8'), /edited/)
-
-  // A second edit to the same file must be allowed: the task tracks the hash
-  // produced by the previous edit, not only the original backup hash.
-  const appliedAgain = await call(harness, 'dshpd_apply', {
-    approvalToken: approval.approvalToken,
-    backupId: backup.backupId,
-    filePath: readme,
-    oldText: '# modern-plugin (edited)',
-    newText: '# modern-plugin (edited twice)',
-  })
-  assert.equal(appliedAgain.applied, true)
-
-  const verify = await call(harness, 'dshpd_verify', { pluginPath: work })
-  assert.equal(verify.ok, true)
-  assert.ok(verify.checks.some((check) => check.id === 'CLIENT_BUNDLE' && check.status === 'PASS'))
-
-  const report = await call(harness, 'dshpd_report', { backupId: backup.backupId })
-  assert.equal(report.edits.length, 2)
-  assert.equal(report.analysisAfter.counts.BLOCKER, 0)
-
-  // External change after the snapshot: the next edit must be refused.
-  const tampered = readFileSync(readme, 'utf8') + '\nexternal change\n'
-  writeFileSync(readme, tampered, 'utf8')
-  const stale = await call(harness, 'dshpd_apply', {
-    approvalToken: approval.approvalToken,
-    backupId: backup.backupId,
-    filePath: readme,
-    oldText: '# modern-plugin (edited twice)',
-    newText: '# modern-plugin (edited three times)',
-  })
-  assert.match(stale.error, /changed since the backup snapshot/)
-
-  const rollback = await call(harness, 'dshpd_rollback', { backupId: backup.backupId })
-  assert.equal(rollback.failed, 0)
-  assert.equal(readFileSync(readme, 'utf8'), original)
-
-  const status = await call(harness, 'dshpd_status', { pluginPath: work })
-  assert.equal(status.backups.length, 1)
-  assert.ok(status.journal.length >= 2)
-  assert.ok(statSync(join(work, '.dsh-plugin-design', 'backup', backup.backupId, 'manifest.json')).size > 0)
-})
-
-test('manifest migrations upgrade a bare package.json', async () => {
-  const harness = createHarness()
-  const root = mkdtempSync(join(tmpdir(), 'dshpd-migrate-'))
-  temporaryRoots.push(root)
-  const work = join(root, 'plugin')
-  mkdirSync(join(work, 'lib'), { recursive: true })
-  mkdirSync(join(work, 'tests'), { recursive: true })
-  writeFileSync(join(work, 'package.json'), JSON.stringify({ name: 'migrate-me', version: '0.1.0', main: 'index.js' }, null, 2) + '\n')
-  writeFileSync(join(work, 'cordis.patch.yml'), "- insert:\n    - id: migrate-me\n      name: 'migrate-me'\n")
-  writeFileSync(join(work, 'lib', 'client.js'), 'window.__ModuleLoader__.load({ id: "migrate-me", factory: (require) => { var module = { exports: {} }; function apply() {} module.exports.apply = apply; module.exports.inject = ["slots"]; module.exports.slots = ["settings.section"]; return module.exports; } });\n')
-  writeFileSync(join(work, 'README.md'), '# migrate-me\n')
-  writeFileSync(join(work, 'LICENSE'), 'MIT\n')
-  writeFileSync(join(work, 'tests', 'smoke.test.js'), '// smoke\n')
-
-  const packageJson = join(work, 'package.json')
-  const approval = await call(harness, 'dshpd_approve', { pluginPath: work, designPath: join(work, 'design.md') })
-  const backup = await call(harness, 'dshpd_backup', { approvalToken: approval.approvalToken, files: [packageJson] })
-  const migrated = await call(harness, 'dshpd_migrate', {
-    approvalToken: approval.approvalToken,
-    backupId: backup.backupId,
-    migrations: ['manifest-version', 'engines-dsh', 'bundle-patch', 'client-meta'],
-    options: { dshRange: '>=0.2.0 <0.3.0' },
-  })
-  assert.equal(migrated.changed, true)
-  assert.equal(migrated.skipped.length, 0)
-
-  const pkg = JSON.parse(readFileSync(packageJson, 'utf8'))
-  assert.equal(pkg.dsh.manifestVersion, 1)
-  assert.equal(pkg.engines.dsh, '>=0.2.0 <0.3.0')
-  assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
-  assert.equal(pkg.dsh.client.platform, 'web')
-  assert.equal(pkg.exports['./client'], './lib/client.js')
-  assert.equal(pkg.exports['./package.json'], './package.json')
-
-  const verify = await call(harness, 'dshpd_verify', { pluginPath: work })
-  assert.equal(verify.ok, true)
-})
-
-test('ui_check combines runtime client graph with static UI diagnostics', async () => {
-  const harness = createHarness()
-  const result = await call(harness, 'dshpd_ui_check', { pluginPath: join(FIXTURES, 'modern-plugin') })
-  assert.equal(result.packageName, 'modern-plugin')
-  assert.equal(result.runtime.available, true)
-  assert.equal(result.runtime.inGraph, true)
-  assert.equal(result.runtime.rev, 'bundle-rev')
-  assert.equal(result.buildStale, false)
-  assert.equal(result.applyPresent, true)
-  assert.ok(result.uiSlots.includes('settings.section'))
-})
-
-test('design proposes a UI for a plugin without a client half and verify expects it', async () => {
-  const harness = createHarness()
-  const work = copyFixture('legacy-plugin')
-  const design = await call(harness, 'dshpd_design', { pluginPath: work })
-  assert.equal(design.wrote, true)
-  assert.equal(design.ui.proposed, true)
-  assert.equal(design.ui.entry, 'settings.section')
-  assert.match(design.ui.wireframe, /┌/)
-  assert.match(design.ui.userMessage, /设置/)
-  assert.match(design.ui.userMessage, /```text/)
-  const markdown = readFileSync(design.designPath, 'utf8')
-  assert.match(markdown, /UI 方案建议/)
-  assert.match(markdown, /Desktop Profile Deployment/)
-  assert.match(markdown, /settings\.section/)
-  const meta = JSON.parse(readFileSync(design.designMetaPath, 'utf8'))
-  assert.equal(meta.ui.expected, true)
-  assert.equal(meta.ui.proposed, true)
-
-  const approval = await call(harness, 'dshpd_approve', { pluginPath: work, designPath: design.designPath })
-  await call(harness, 'dshpd_backup', { approvalToken: approval.approvalToken, files: [join(work, 'package.json')] })
-  const verify = await call(harness, 'dshpd_verify', { pluginPath: work })
-  assert.equal(verify.ok, false)
-  assert.ok(verify.checks.some((check) => check.id === 'UI_EXPECTED' && check.status === 'FAIL'))
-})
-
-test('mount tool dry-runs then appends a desktop profile row with backup', async () => {
-  const home = mkdtempSync(join(tmpdir(), 'dshpd-home-'))
-  temporaryRoots.push(home)
-  mkdirSync(join(home, 'profiles', 'desktop', 'node_modules', 'demo-plugin'), { recursive: true })
-  writeFileSync(join(home, 'profiles', 'desktop', 'node_modules', 'demo-plugin', 'package.json'), '{"name":"demo-plugin","version":"1.0.0"}', 'utf8')
-  writeFileSync(join(home, 'profiles', 'desktop', 'cordis.patch.yml'), '- insert:\n    - id: ui-settings\n', 'utf8')
-  const previous = process.env.DSH_HOME
-  process.env.DSH_HOME = home
   try {
-    const harness = createHarness()
-    const dry = await call(harness, 'dshpd_mount', { packageName: 'demo-plugin' })
-    assert.equal(dry.applied, false)
-    assert.match(dry.append, /- id: demo-plugin/)
-    const applied = await call(harness, 'dshpd_mount', { packageName: 'demo-plugin', apply: true })
-    assert.equal(applied.applied, true)
-    assert.equal(existsSync(applied.backupPath), true)
-    assert.match(readFileSync(join(home, 'profiles', 'desktop', 'cordis.patch.yml'), 'utf8'), /- id: demo-plugin/)
+    assert.equal(harness.tools.size, 18)
+    assert.deepEqual([...harness.tools.keys()].sort(), [
+      'dshpd_analyze', 'dshpd_apply', 'dshpd_approve', 'dshpd_backup', 'dshpd_design',
+      'dshpd_discover', 'dshpd_distribute', 'dshpd_inspect', 'dshpd_migrate', 'dshpd_mount',
+      'dshpd_plan', 'dshpd_report', 'dshpd_rollback', 'dshpd_status', 'dshpd_ui_check',
+      'dshpd_validate', 'dshpd_verify', 'dshpd_write',
+    ])
+    assert.deepEqual([...harness.routes.keys()].sort(), [
+      '/dsh-plugin-design/analyze',
+      '/dsh-plugin-design/client-health',
+      '/dsh-plugin-design/discover',
+      '/dsh-plugin-design/health',
+      '/dsh-plugin-design/info',
+    ])
+    for (const route of harness.routes.values()) assert.equal(route.kind, 'exact')
   } finally {
-    if (previous === undefined) delete process.env.DSH_HOME
-    else process.env.DSH_HOME = previous
+    harness.close()
+  }
+})
+
+test('analyze reports scan coverage, real artifacts and official SemVer results', async () => {
+  const previous = process.env.DSH_VERSION
+  process.env.DSH_VERSION = '0.2.1-rc.2'
+  const harness = createHarness()
+  try {
+    const result = await harness.call('dshpd_analyze', { pluginPath: join(FIXTURES, 'modern-plugin') })
+    assert.equal(result.ok, true, JSON.stringify(result))
+    assert.equal(result.overall, 'READY_TO_MODIFY')
+    assert.equal(result.official.compatibility.satisfied, true)
+    assert.equal(result.official.compatibility.source, 'engines.dsh')
+    assert.equal(result.scan.status, 'COMPLETE')
+    assert.equal(result.scan.coverage.incomplete, false)
+    assert.equal(result.official.host.entryPresent, true)
+    assert.ok(result.official.artifacts.scanned >= 1, 'lib/client.js must be scanned as an artifact')
+    assert.equal(result.safetyClaim, 'static-preflight-only')
+    assert.equal(result.runtime.effectiveSource, 'running')
+  } finally {
+    harness.close()
+    if (previous === undefined) delete process.env.DSH_VERSION
+    else process.env.DSH_VERSION = previous
+  }
+})
+
+test('unknown runtime yields UNKNOWN compatibility instead of a false pass', async () => {
+  const previous = process.env.DSH_VERSION
+  delete process.env.DSH_VERSION
+  const harness = createHarness()
+  try {
+    const result = await harness.call('dshpd_analyze', { pluginPath: join(FIXTURES, 'modern-plugin') })
+    assert.equal(result.official.compatibility.satisfied, null)
+    assert.ok(result.issues.some((issue) => issue.id === 'ENGINES_DSH_RUNTIME_UNKNOWN'))
+    assert.equal(result.runtime.effectiveSource, 'unknown')
+  } finally {
+    harness.close()
+    if (previous !== undefined) process.env.DSH_VERSION = previous
+  }
+})
+
+test('a runtime-killing pattern is flagged and requires isolated verification', async () => {
+  const harness = createHarness()
+  try {
+    const result = await harness.call('dshpd_analyze', { pluginPath: join(FIXTURES, 'legacy-plugin') })
+    assert.equal(result.overall, 'BLOCKED')
+    const ids = new Set(result.issues.map((issue) => issue.id))
+    for (const id of ['ENGINES_DSH_MISSING', 'BUNDLE_NOT_DECLARED', 'GLOBALTHIS_PATCH', 'TOOL_NO_OUTPUT']) {
+      assert.ok(ids.has(id), 'missing ' + id)
+    }
+    assert.ok(result.issues.some((issue) => issue.ruleVersion && issue.confidence && issue.source))
+  } finally {
+    harness.close()
+  }
+})
+
+test('inspect lists the Host/Client entries and build artifacts', async () => {
+  const harness = createHarness()
+  try {
+    const result = await harness.call('dshpd_inspect', { pluginPath: join(FIXTURES, 'modern-plugin') })
+    assert.equal(result.ok, true, JSON.stringify(result))
+    assert.equal(result.hostEntry.present, true)
+    assert.equal(result.client.bundleExists, true)
+    assert.ok(result.artifacts.includes('lib/client.js'))
+    assert.ok(result.sourceFiles.includes('src/index.js'))
+    assert.equal(result.coverage.incomplete, false)
+  } finally {
+    harness.close()
+  }
+})
+
+test('discover runs in a worker and reports coverage', async () => {
+  const harness = createHarness()
+  try {
+    const result = await harness.call('dshpd_discover', { root: FIXTURES, maxDepth: 3 })
+    assert.equal(result.ok, true, JSON.stringify(result))
+    assert.ok(result.count >= 4)
+    const modern = result.plugins.find((plugin) => plugin.name === 'modern-plugin')
+    assert.equal(modern.bundle, true)
+    assert.equal(modern.client, true)
+    assert.equal(result.coverage.incomplete, false)
+  } finally {
+    harness.close()
+  }
+})
+
+test('design classifies the target, does not invent a Client half and names distribution duties', async () => {
+  const harness = createHarness()
+  try {
+    const result = await harness.call('dshpd_design', { pluginPath: copyFixture('legacy-plugin') })
+    assert.equal(result.wrote, true, JSON.stringify(result))
+    assert.equal(result.classification.type, 'tool')
+    assert.equal(result.classification.clientNeed, 'optional')
+    assert.equal(result.ui.proposed, false)
+    assert.equal(result.uiMode.mode, 'not-needed')
+    const markdown = harness.read(result.designPath)
+    assert.match(markdown, /Host\/Client 必要性/)
+    assert.match(markdown, /Independent Distribution/)
+    assert.match(markdown, /planHash/)
+    assert.doesNotMatch(markdown, /Desktop Profile Deployment（桌面版必做）/)
+  } finally {
+    harness.close()
+  }
+})
+
+test('design proposes a UI only when asked, and marks it for recovery when one exists', async () => {
+  const harness = createHarness()
+  try {
+    const forced = await harness.call('dshpd_design', { pluginPath: copyFixture('legacy-plugin'), ui: 'propose' })
+    assert.equal(forced.ui.proposed, true)
+    const withClient = await harness.call('dshpd_design', { pluginPath: copyFixture('modern-plugin') })
+    assert.equal(withClient.ui.recovery, true)
+    assert.equal(withClient.ui.proposed, false)
+  } finally {
+    harness.close()
+  }
+})
+
+test('client health receipts distinguish registered from rendered', async () => {
+  const harness = createHarness({
+    clientEntries: [{ id: 'modern-plugin', rev: 'rev-1' }],
+    clientPaths: { 'modern-plugin': join(FIXTURES, 'modern-plugin', 'lib', 'client.js') },
+  })
+  try {
+    const before = await harness.call('dshpd_ui_check', { pluginPath: join(FIXTURES, 'modern-plugin') })
+    assert.equal(before.runtime.inGraph, true)
+    assert.equal(before.status, 'UNKNOWN')
+    assert.match(before.reason, /no fresh activation\/render receipt/)
+    const route = harness.routes.get('/dsh-plugin-design/client-health')
+    const response = makeResponse()
+    await route.handler(makeRequest('POST', '/dsh-plugin-design/client-health', {
+      packageName: 'modern-plugin', activated: true, rendered: true, version: '1.0.0',
+    }), response)
+    assert.equal(response.statusCode, 200)
+    const after = await harness.call('dshpd_ui_check', { pluginPath: join(FIXTURES, 'modern-plugin') })
+    assert.equal(after.status, 'PASS')
+    assert.equal(after.stages.rendered, true)
+    const health = await harness.routes.get('/dsh-plugin-design/health')
+      .handler(makeRequest('GET', '/dsh-plugin-design/health?packageName=modern-plugin'), makeResponse())
+    void health
+  } finally {
+    harness.close()
+  }
+})
+
+test('a declared Client half missing from the graph is FAIL, not WARN', async () => {
+  const harness = createHarness({ clientEntries: [] })
+  try {
+    const result = await harness.call('dshpd_ui_check', { pluginPath: join(FIXTURES, 'modern-plugin') })
+    assert.equal(result.status, 'FAIL')
+    assert.equal(result.ok, false)
+  } finally {
+    harness.close()
   }
 })
 
 test('settings routes answer info/analyze/discover over the wire contract', async () => {
   const harness = createHarness()
-  const byPath = new Map(harness.routes.map((route) => [route.path, route]))
+  try {
+    const info = makeResponse()
+    await harness.routes.get('/dsh-plugin-design/info').handler(makeRequest('GET', '/dsh-plugin-design/info'), info)
+    assert.equal(info.statusCode, 200)
+    const infoJson = JSON.parse(info.body)
+    assert.equal(infoJson.version, '1.4.3')
+    assert.equal(infoJson.tools.length, 18)
+    assert.ok(infoJson.runtime.running)
+    assert.equal(infoJson.deploymentAdapter.available, false)
 
-  const info = makeRouteResponse()
-  await byPath.get('/dsh-plugin-design/info').handler(makeRouteRequest('GET', '/dsh-plugin-design/info'), info)
-  assert.equal(info.statusCode, 200)
-  const infoJson = JSON.parse(info.body)
-  assert.equal(infoJson.version, '1.3.2')
-  assert.equal(infoJson.tools.length, 14)
+    const analyze = makeResponse()
+    await harness.routes.get('/dsh-plugin-design/analyze').handler(
+      makeRequest('POST', '/dsh-plugin-design/analyze', { pluginPath: join(FIXTURES, 'modern-plugin') }), analyze,
+    )
+    assert.equal(analyze.statusCode, 200)
+    assert.equal(JSON.parse(analyze.body).scan.status, 'COMPLETE')
 
-  const analyze = makeRouteResponse()
-  await byPath.get('/dsh-plugin-design/analyze').handler(
-    makeRouteRequest('POST', '/dsh-plugin-design/analyze', { pluginPath: join(FIXTURES, 'modern-plugin') }),
-    analyze,
-  )
-  assert.equal(analyze.statusCode, 200)
-  assert.equal(JSON.parse(analyze.body).overall, 'READY_TO_MODIFY')
+    const discover = makeResponse()
+    await harness.routes.get('/dsh-plugin-design/discover').handler(
+      makeRequest('GET', '/dsh-plugin-design/discover?root=' + encodeURIComponent(FIXTURES)), discover,
+    )
+    assert.equal(discover.statusCode, 200)
+    assert.ok(JSON.parse(discover.body).count >= 4)
+  } finally {
+    harness.close()
+  }
+})
 
-  const discover = makeRouteResponse()
-  await byPath.get('/dsh-plugin-design/discover').handler(
-    makeRouteRequest('GET', '/dsh-plugin-design/discover?root=' + encodeURIComponent(FIXTURES)),
-    discover,
-  )
-  assert.equal(discover.statusCode, 200)
-  assert.ok(JSON.parse(discover.body).count >= 3)
+test('an unreadable settings request is rejected without crashing the route', async () => {
+  const harness = createHarness()
+  try {
+    const analyze = makeResponse()
+    await harness.routes.get('/dsh-plugin-design/analyze').handler(
+      makeRequest('POST', '/dsh-plugin-design/analyze', { pluginPath: join(FIXTURES, 'does-not-exist') }), analyze,
+    )
+    assert.ok([200, 503].includes(analyze.statusCode))
+    const body = JSON.parse(analyze.body)
+    if (analyze.statusCode === 503) assert.equal(body.scan.status, 'INCOMPLETE')
+    else assert.equal(body.ok, false)
+  } finally {
+    harness.close()
+  }
 })

@@ -154,23 +154,76 @@ function pathStyle() {
   }
 }
 
-function postJson(url, body) {
-  return fetch(url, {
+var REQUEST_TIMEOUT_MS = 25000
+var MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+
+/**
+ * POST JSON with a deadline and an abort signal.
+ * The caller owns the AbortController so unmount/cancel can stop the request;
+ * the timeout aborts it as well. The response body is size-capped before parse.
+ */
+function postJson(url, body, options) {
+  var opts = options || {}
+  var controller = opts.controller || (typeof AbortController === 'function' ? new AbortController() : null)
+  var timedOut = false
+  var timer = null
+  if (controller !== null && typeof setTimeout === 'function') {
+    timer = setTimeout(function () {
+      timedOut = true
+      try { controller.abort() } catch (error) { /* ignore */ }
+    }, opts.timeoutMs || REQUEST_TIMEOUT_MS)
+  }
+  var request = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
-  }).then(function (response) {
+  }
+  if (controller !== null) request.signal = controller.signal
+  return fetch(url, request).then(function (response) {
     return response.text().then(function (text) {
+      if (text.length > MAX_RESPONSE_BYTES) throw new Error('Host 响应超过大小上限，已拒绝解析')
       var data
       try {
         data = JSON.parse(text)
       } catch (error) {
         throw new Error('Host 返回了非 JSON 响应（路由可能未注册）：' + text.slice(0, 120))
       }
-      if (!response.ok || data.ok === false) throw new Error((data && data.error) || ('HTTP ' + response.status))
+      if (!response.ok || data.ok === false) {
+        var reason = ''
+        if (data && typeof data.error === 'string' && data.error !== '') reason = data.error
+        else if (data && data.scan && Array.isArray(data.scan.reasons) && data.scan.reasons.length > 0) reason = '扫描未完成：' + data.scan.reasons.join(', ')
+        else if (data && data.scan && typeof data.scan.status === 'string') reason = '扫描状态：' + data.scan.status
+        throw new Error(reason || ('HTTP ' + response.status))
+      }
       return data
     })
+  }).catch(function (error) {
+    if (timedOut) throw new Error('请求超时（' + String(opts.timeoutMs || REQUEST_TIMEOUT_MS) + ' ms）；已取消，不会继续占用 Host')
+    if (error && error.name === 'AbortError') throw new Error('请求已取消')
+    throw error
+  }).finally(function () {
+    if (timer !== null) clearTimeout(timer)
   })
+}
+
+/** Send one lifecycle receipt; failures are non-fatal and never block the UI. */
+function postHealth(payload) {
+  if (typeof fetch !== 'function') return Promise.resolve()
+  var body = JSON.stringify(Object.assign({
+    packageName: 'dsh-plugin-design',
+    version: VERSION,
+    buildRev: RULESET,
+    receivedAt: new Date().toISOString(),
+  }, payload || {}))
+  try {
+    return fetch('/dsh-plugin-design/client-health', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+    }).then(function () { return true }).catch(function () { return false })
+  } catch (error) {
+    return Promise.resolve(false)
+  }
 }
 
 function verdictTone(overall) {
@@ -184,17 +237,20 @@ function FindingList(props) {
   var issues = props.issues || []
   if (issues.length === 0) return h('div', { style: { fontSize: 12, opacity: 0.7 } }, '未命中规则。')
   var top = issues.slice(0, props.limit || 6)
-  return h('div', { style: { marginTop: 4 } }, top.map(function (issue) {
+  var children = top.map(function (issue) {
     var tone = issue.severity === 'BLOCKER' || issue.severity === 'CRITICAL' ? 'bad' : issue.severity === 'HIGH' ? 'warn' : 'muted'
     return h('div', { key: issue.id + ':' + (issue.file || ''), style: { fontSize: 12, margin: '2px 0' } }, [
       h('span', { style: badgeStyle(tone) }, issue.severity),
       h('span', null, issue.title + (issue.file ? '  ·  ' + issue.file : '')),
     ])
-  })).concat(issues.length > top.length
-    ? [h('div', { key: 'more', style: { fontSize: 11, opacity: 0.65 } }, '… 另有 ' + (issues.length - top.length) + ' 条')]
-    : []).concat(props.truncated
-    ? [h('div', { key: 'truncated', style: { fontSize: 11, opacity: 0.65 } }, '（结果已截断，完整列表请让 Agent 调用 dshpd_analyze）')]
-    : [])
+  })
+  if (issues.length > top.length) {
+    children.push(h('div', { key: 'more', style: { fontSize: 11, opacity: 0.65 } }, '… 另有 ' + (issues.length - top.length) + ' 条'))
+  }
+  if (props.truncated) {
+    children.push(h('div', { key: 'truncated', style: { fontSize: 11, opacity: 0.65 } }, '（结果已截断，完整列表请让 Agent 调用 dshpd_analyze）'))
+  }
+  return h('div', { style: { marginTop: 4 } }, children)
 }
 
 function PluginRow(props) {
@@ -229,13 +285,13 @@ function PluginRow(props) {
           ]),
           analysis.ui && analysis.ui.available
             ? h('div', { style: { fontSize: 11, marginTop: 2 } }, [
-                h('span', { style: badgeStyle(analysis.ui.inGraph ? 'ok' : 'warn') }, '运行时 UI'),
+                h('span', { style: badgeStyle(analysis.ui.inGraph ? 'ok' : 'warn') }, 'Client graph'),
                 h('span', { style: { opacity: 0.8 } }, analysis.ui.inGraph
-                  ? '已注册 ' + (analysis.ui.rev || '')
+                  ? '已注册（= 模块已提供，不等于页面已渲染）'
                   : '未注册（页面不会出现该 UI）'),
-                analysis.official && analysis.official.client && analysis.official.client.buildStale
-                  ? h('span', { style: { marginLeft: 6, color: COLORS.warn } }, '· client bundle 已过期，需要重新构建')
-                  : null,
+                analysis.ui.health && analysis.ui.health.rendered === true
+                  ? h('span', { style: { marginLeft: 6, color: COLORS.ok } }, '· 已收到渲染回执')
+                  : h('span', { style: { marginLeft: 6, color: COLORS.muted } }, '· 无渲染回执（UNKNOWN）'),
               ])
             : null,
           analysis.deployment && analysis.deployment.desktop
@@ -281,6 +337,36 @@ function Panel(props) {
   var techState = React.useState(false)
   var showTech = techState[0]
   var setShowTech = techState[1]
+  var generation = React.useRef(0)
+  var controllerRef = React.useRef(null)
+  var mounted = React.useRef(true)
+
+  React.useEffect(function () {
+    mounted.current = true
+    postHealth({ activated: true, rendered: true })
+    return function () {
+      mounted.current = false
+      generation.current += 1
+      if (controllerRef.current !== null) {
+        try { controllerRef.current.abort() } catch (error) { /* ignore */ }
+        controllerRef.current = null
+      }
+    }
+  }, [])
+
+  function beginRequest() {
+    if (controllerRef.current !== null) {
+      try { controllerRef.current.abort() } catch (error) { /* ignore */ }
+    }
+    var controller = typeof AbortController === 'function' ? new AbortController() : null
+    controllerRef.current = controller
+    generation.current += 1
+    return { controller: controller, generation: generation.current }
+  }
+
+  function isCurrent(request) {
+    return mounted.current && request.generation === generation.current
+  }
 
   function pickDirectory() {
     var workspace = null
@@ -294,9 +380,18 @@ function Panel(props) {
       return
     }
     setError(null)
-    Promise.resolve(workspace.pickDirectory()).then(function (picked) {
-      if (typeof picked === 'string' && picked !== '') setRoot(picked)
+    var picked
+    try {
+      picked = workspace.pickDirectory()
+    } catch (error) {
+      setError('目录选择服务同步抛错：' + String(error && error.message ? error.message : error) + '（可手动粘贴路径）')
+      return
+    }
+    Promise.resolve(picked).then(function (value) {
+      if (!mounted.current) return
+      if (typeof value === 'string' && value !== '') setRoot(value)
     }).catch(function (failure) {
+      if (!mounted.current) return
       setError('目录选择失败：' + String(failure && failure.message ? failure.message : failure) + '（可手动粘贴路径）')
     })
   }
@@ -307,39 +402,61 @@ function Panel(props) {
       setError('请先选择或输入第三方插件库文件夹路径。')
       return
     }
+    if (loading) return
+    var request = beginRequest()
     setLoading(true)
     setError(null)
     setAnalyses({})
-    postJson('/dsh-plugin-design/discover', { root: target, maxDepth: 6 }).then(function (data) {
-      setPlugins((data && data.plugins) || [])
-      setLoading(false)
-    }).catch(function (failure) {
-      setError(String(failure && failure.message ? failure.message : failure))
-      setLoading(false)
-    })
+    setAnalyzing({})
+    postJson('/dsh-plugin-design/discover', { root: target, maxDepth: 6 }, { controller: request.controller })
+      .then(function (data) {
+        if (!isCurrent(request)) return
+        setPlugins((data && data.plugins) || [])
+        if (data && data.scan && data.scan.status === 'INCOMPLETE') {
+          setError('扫描未完成（' + String((data.scan && data.scan.reasons) || []) + '）：结果不完整，请缩小目录或稍后重试。')
+        }
+      })
+      .catch(function (failure) {
+        if (!isCurrent(request)) return
+        setError(String(failure && failure.message ? failure.message : failure))
+      })
+      .then(function () {
+        if (!isCurrent(request)) return
+        setLoading(false)
+        if (controllerRef.current === request.controller) controllerRef.current = null
+      })
   }
 
   function analyze(plugin) {
+    if (analyzing[plugin.path] === true) return
+    var request = beginRequest()
     setAnalyzing(function (previous) {
       var next = Object.assign({}, previous)
       next[plugin.path] = true
       return next
     })
-    postJson('/dsh-plugin-design/analyze', { pluginPath: plugin.path }).then(function (data) {
-      setAnalyses(function (previous) {
-        var next = Object.assign({}, previous)
-        next[plugin.path] = data
-        return next
+    postJson('/dsh-plugin-design/analyze', { pluginPath: plugin.path }, { controller: request.controller })
+      .then(function (data) {
+        if (!isCurrent(request)) return
+        setAnalyses(function (previous) {
+          var next = Object.assign({}, previous)
+          next[plugin.path] = data
+          return next
+        })
       })
-    }).catch(function (failure) {
-      setError('分析失败：' + String(failure && failure.message ? failure.message : failure))
-    }).then(function () {
-      setAnalyzing(function (previous) {
-        var next = Object.assign({}, previous)
-        delete next[plugin.path]
-        return next
+      .catch(function (failure) {
+        if (!isCurrent(request)) return
+        setError('分析失败：' + String(failure && failure.message ? failure.message : failure))
       })
-    })
+      .then(function () {
+        if (!isCurrent(request)) return
+        setAnalyzing(function (previous) {
+          var next = Object.assign({}, previous)
+          delete next[plugin.path]
+          return next
+        })
+        if (controllerRef.current === request.controller) controllerRef.current = null
+      })
   }
 
   function requestPrompt(plugin) {
@@ -384,10 +501,10 @@ function Panel(props) {
     h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
       h('input', {
         style: inputStyle(),
-        placeholder: '插件库文件夹，例如 E:\\creat\\DSH\\open',
+        placeholder: '插件库文件夹，例如 D:\\plugins 或 /srv/plugins',
         value: root,
         onChange: function (event) { setRoot(event.target.value) },
-        onKeyDown: function (event) { if (event.key === 'Enter') scan() },
+        onKeyDown: function (event) { if (event.key === 'Enter' && !loading) scan() },
       }),
       h('button', { style: buttonStyle(false), onClick: pickDirectory }, '选择文件夹'),
       h('button', { style: buttonStyle(true), onClick: scan, disabled: loading }, loading ? '扫描中…' : '扫描'),
@@ -428,10 +545,11 @@ function Panel(props) {
         h('div', { key: 'r' }, [h('b', null, '恢复与报告：'), 'dshpd_rollback · dshpd_status · dshpd_report']),
       ]),
       h('h4', { style: h4Style() }, '安装 / 升级（官方 bundle 方式）'),
-      h('div', { style: cmdStyle() }, 'dsh plugin --profile web add <本目录或 npm 包名>\n# 升级：先 remove 再 add（HMR 下不允许覆盖安装）\ndsh plugin --profile web remove dsh-plugin-design\ndsh plugin --profile web add <本目录或 npm 包名>'),
-      h('div', { style: { fontSize: 12, opacity: 0.75 } }, '旧版没有 dsh CLI 时，可用仓库内 install.ps1 / install.sh 的 link 模式作为回退；桌面端请用 -Profile desktop。'),
+      h('div', { style: cmdStyle() }, 'dsh plugin --profile <profile> add <本目录、.tgz 或 npm 包名>\n# 升级：用官方 plugin manager 的 update 流程；不要无条件 remove + add'),
+      h('div', { style: { fontSize: 12, opacity: 0.75 } }, '安装前先确认目标 profile（web / desktop 不同）；安装后需要重启客户端。仓库内 install.ps1 / install.sh 只作为受控回退，不再静默 link 写入。'),
       h('h4', { style: h4Style() }, '安全边界'),
-      h('div', null, '分析先于修改、设计先于执行；未确认不修改；修改前备份、失败可回滚；不修改 Core、不使用 private API。'),
+      h('div', null, '分析先于修改、计划先于执行；批准绑定精确 planHash 与文件基线；修改前逐字节备份、失败可回滚；不修改 Core、不使用 private API。'),
+      h('div', null, '静态预检不执行插件代码：同步死循环、OOM、process.exit 等只能在隔离运行时验证。'),
       h('div', { style: noteStyle() }, '说明：DH-TP-SDK 的 Bronze/Silver/Gold、P0–P4、S0–S4 为工程化规范等级，非 DeepSeek 官方认证。'),
     ]) : null,
   ])

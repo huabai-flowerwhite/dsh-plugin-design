@@ -3,31 +3,37 @@
 ## 运行
 
 ```bash
-npm test                 # node --test（tests/*.test.mjs）
-npm run build:client     # 重新生成 lib/client.js
-npm run check:client     # 仅检查 src/lib 是否漂移
+node --test                              # 全部测试（tests/*.test.mjs）
+node scripts/build-client.mjs            # 重新生成 lib/client.js
+node scripts/build-client.mjs --check    # 只检查 src/lib 是否漂移
+node scripts/recovery-drill.mjs <dir>    # 真实快照 + 独立恢复 CLI 演练
+node scripts/clean-env-matrix.mjs --cli-json-file <cli.json> --tgz <pkg.tgz> --probe /path
 ```
 
-## 文件与覆盖
+测试没有网络依赖；`clean-env-matrix.mjs` 需要显式 DSH CLI argv，未提供时
+`dsh-host` 结果保持 `NOT_RUN`。
+
+## 覆盖（1.4.3）
 
 | 文件 | 覆盖 |
 |---|---|
-| `manifest.test.mjs` | 本插件自身：官方 `package.json.dsh`、`engines.dsh`、三处导出、icon、DH-TP-SDK 清单、bundle patch、源码安全、安装脚本互斥策略 |
-| `rules.test.mjs` | SemVer 范围（含预发布、`^`/`~`/`||`）、启发式 manifest、评分与结论、`engines.dsh workspace:`、client 缺导出、client 字段类型/自引用/基线模块、Host 入口、图标格式与大小、`type: module`、npm `files` 完整性、UI 诊断（构建过期 / styles / React / 路由 / apply） |
-| `host.test.mjs` | 14 工具与 3 路由注册；legacy / modern / removed-api 三类 fixture；审批→备份→修改→校验→报告→回滚全流程；清单迁移；`dshpd_ui_check` 运行时 client graph；无 UI 插件的 design UI 提案与 `UI_EXPECTED` 校验；`dshpd_mount` dryRun/apply；`/info`、`/discover`、`/analyze` 路由 |
-| `profiles.test.mjs` | Cordis patch insert-row 解析；desktop/web 双 profile 挂载与包解析；`ensureDesktopMount` 默认 dryRun、apply 前备份、重复挂载幂等 |
-| `services.test.mjs` | client 服务目录快照；`ctx.get('workspaces')` 与 `uiWorkspace` 的区分；`workspaces.pickDirectory` 直接/别名调用；`styles` 旧服务映射；eager lookup 的 top-level/apply 命中与 lazy/framework 不误报 |
-| `client-build.test.mjs` | `src/client.js` 与 `lib/client.js` 零漂移；factory-form 契约、id/版本/兼容范围注入、占位符替换 |
+| `change.test.mjs` | planHash 稳定性、缺失/错误哈希、越界/junction、跨会话/跨 agent、design 漂移、approval 拒绝/放行、CAS stale、`allowStale` 移除、部分快照、篡改回滚、用户冲突、创建文件回滚需人工删除、journal prepare 恢复、mount 不写 profile、官方 manager 委托与 restart-required |
+| `adapter.test.mjs` | rc.3 管理器缺 `updateBundle`/`listVersions` 时仍可用、缺失必需方法时报错、能力矩阵与 `UNSUPPORTED`、install/remove 只走受支持方法、无管理器时不写 profile |
+| `scan.test.mjs` | worker 文件/字节预算、lib-only 包、不可读根、取消、队列上限、大扫描期间 Host 心跳、缺失路径 INCOMPLETE |
+| `host.test.mjs` | 18 工具/5 路由、analyze 覆盖率与真实产物、运行时未知、分类与 UI 决策、健康回执分层、graph 缺失为 FAIL、设置路由线协议 |
+| `semver.test.mjs` | 435 例 semver@7.8.5 差分、合法范围、1.3.2 已知误判、build metadata/prerelease |
+| `distribution.test.mjs` | 最小 Host+Client 包审计、负例（缺 chunk/作者路径/维护依赖/私有状态）、导出产物与哈希、输出目录限制、tar 安全、隔离包加载 PASS/FAIL、Host 工具端到端 |
+| `recovery.test.mjs` | CLI list/verify/preview/restore、篡改拒绝、冲突保留、operations、undo-enable、依赖闭包 |
+| `install.test.mjs` | stdout 与退出码分离、失败不 remove、dry-run、bash 可用时同契约、脚本不含 remove-then-add |
+| `profiles.test.mjs` | patch 解析（insert/override/disabled）、installed/selected/enabled 分离、home patch 层、非法包名、旧写路径硬失败 |
+| `manifest.test.mjs` / `client-build.test.mjs` | 自身清单、bundle patch、产物漂移、危险模式、无 @deepseek-ai 运行时导入 |
+| `rules.test.mjs` / `services.test.mjs` | 规则集回归、服务目录与取值时机 |
 
-## Fixtures
+## 断言原则
 
-- `fixtures/modern-plugin`：0.2.x 形态（`engines.dsh`、bundle、client、icon、测试、README、LICENSE），期望 `READY_TO_MODIFY`。
-- `fixtures/legacy-plugin`：pre-0.2 形态（无官方元数据、替换 Core row、globalThis、模块级 session 状态、工具缺 output），期望 `BLOCKED`。
-- `fixtures/removed-api-plugin`：仍依赖 0.2.0 已移除的 invariant 与子路径 `package.json`，期望 `BLOCKED`。
-
-fixture 内的 `tests/smoke.mjs` 不命名为 `*.test.*`，避免被根目录 `node --test` 递归执行。
-
-## 说明
-
-- 这是静态与 mock 运行时测试（node --test），不启动 dsh；`host.test.mjs` 用 node:fs 模拟 `ctx.fs` 契约，并通过 `exec.agent.ctx.get(...)` 提供 `fs` / `sandboxPolicy`。
-- 完整的 DH-TP-SDK 认证矩阵（§26–§34：Agent/Session/Concurrency/Security/Compatibility）需在 dsh 运行时内由 `dshpd_analyze` + 人工验证完成，属启发式 + 手动范畴。
+- 测试的是实际产物与实际行为（worker、tar、文件哈希、子进程），不是源码字符串。
+- 负例必须证明“被拒绝”且没有副作用（profile 未改、文件未覆盖、无 token）。
+- 真实 DSH / 干净环境证据不属于单元测试，单独记录在 `SUPPORT-MATRIX.md`；
+  未运行的环境写 `NOT_RUN`，不伪造 PASS。
+- 1.3.2 的旧 `host.test.mjs` 中“不存在的 design 也能 approve”“mount 直接追加
+  profile”“verify 只要有备份就 ok”的断言已被删除，替换为上述安全回归。

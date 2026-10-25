@@ -1,0 +1,45 @@
+{
+  "name": "dshpd-demo-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Minimal Host+Client DSH plugin used to exercise independent distribution.",
+  "license": "MIT",
+  "icon": "assets/icon.svg",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "dsh": ">=0.2.0 <0.3.0",
+    "node": ">=22 <25"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    },
+    "compatibility": {
+      "apiLevel": 1,
+      "harness": ">=0.2.0 <0.3.0"
+    }
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "src",
+    "scripts",
+    "assets",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:client": "node scripts/build-client.mjs",
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "startedAt": "2026-10-25T07:12:59.170Z",
+  "exe": "E:/运行包/DSHpc/DeepSeek Harness.exe",
+  "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dsh-rc3-desktop-probe-zYCYh2",
+  "userData": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dsh-rc3-desktop-probe-zYCYh2\\userdata",
+  "args": [
+    "--user-data-dir",
+    "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dsh-rc3-desktop-probe-zYCYh2\\userdata",
+    "--remote-debugging-port=9333"
+  ],
+  "realProfileTouched": false,
+  "pid": 39236,
+  "exited": true,
+  "exitCode": 9,
+  "cdp": null,
+  "processes": [],
+  "profileFiles": [],
+  "rootFiles": [],
+  "finishedAt": "2026-10-25T07:12:59.703Z",
+  "verdict": "NOT_RUN_SINGLE_INSTANCE_LOCK",
+  "reason": "the second Desktop process exited before exposing CDP and created no profile; the application holds a process-lifetime single-instance lock, so a separate DSH_HOME/userData alone cannot yield an isolated Desktop renderer"
+}

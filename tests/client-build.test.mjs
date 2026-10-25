@@ -31,3 +31,12 @@ test('checked-in artifact has the rendered byte length', () => {
   const rendered = renderClientBundle()
   assert.equal(statSync(join(root, 'lib', 'client.js')).size, Buffer.byteLength(rendered, 'utf8'))
 })
+
+test('client source never calls array methods on a React element', () => {
+  // Regression: 1.4.1 shipped `h(...).concat(...)` in FindingList. It only
+  // executes when analysis returns findings, so source/artifact/stub checks
+  // missed it and the real settings slot crashed with a TypeError.
+  const source = readFileSync(join(root, 'src', 'client.js'), 'utf8')
+  assert.doesNotMatch(source, /\bh\([^\n]*\)\s*\.\s*concat\(/, 'h(...) returns a React element, not an array')
+  assert.doesNotMatch(source, /\}\)\s*\.\s*concat\(/, 'build a children array before calling h()')
+})

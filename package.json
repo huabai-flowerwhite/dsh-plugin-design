@@ -1,11 +1,14 @@
 {
   "name": "dsh-plugin-design",
-  "version": "1.3.2",
+  "version": "1.4.3",
   "type": "module",
-  "description": "dsh plugin design — DSH 第三方插件规范分析、自动修改与开发元插件（官方 package.json.dsh 契约 0.2.x + DH-TP-SDK）",
+  "description": "dsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.",
   "license": "MIT",
   "icon": "assets/icon.svg",
   "main": "./src/index.js",
+  "bin": {
+    "dshpd-recover": "./bin/dshpd-recover.mjs"
+  },
   "engines": {
     "dsh": ">=0.1.5-rc.1 <0.3.0",
     "node": ">=22 <25"
@@ -29,6 +32,7 @@
     }
   },
   "files": [
+    "bin",
     "src",
     "lib",
     "scripts",
@@ -41,6 +45,7 @@
     "install.sh",
     "README.md",
     "CHANGELOG.md",
+    "SUPPORT-MATRIX.md",
     "LICENSE",
     "DeepSeek-Harness-Third-Party-Plugin-SDK-Specification.md",
     "deepseek-harness-product-technical-framework.md"
@@ -60,6 +65,8 @@
   "scripts": {
     "test": "node --test",
     "build:client": "node scripts/build-client.mjs",
-    "check:client": "node scripts/build-client.mjs --check"
+    "check:client": "node scripts/build-client.mjs --check",
+    "recover": "node bin/dshpd-recover.mjs",
+    "check:host": "node --check src/host.js"
   }
 }

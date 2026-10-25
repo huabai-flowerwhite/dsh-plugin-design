@@ -1,9 +1,26 @@
 # DeepSeek Harness 第三方插件开发 SDK / 规范
 
 **Document ID:** DH-TP-SDK  
-**Version:** 1.3.2
+**Version:** 1.4.0
 **Status:** 工程化第三方插件规范（非 DeepSeek 官方标准）  
-**对齐的 Harness 版本：** `@deepseek-ai/dsh` `0.2.1-rc.2`（Developer Preview）
+**对齐的 Harness 基线：** `@deepseek-ai/dsh` `0.2.1-rc.3`（提交 `22ddee3`，Developer Preview）；本机运行 `0.2.1-rc.2`
+
+> ## 阅读顺序（1.4.0 强制性说明）
+>
+> 本文是**历史工程规范**，逐节记录 1.0–1.3 的经验与示例。以下内容已被 1.4.0
+> 的实测与官方源码核验取代，**不要照抄**：
+>
+> - 第 48 节之前仍可能出现“desktop 优先 / 所有设计默认 desktop / 必须 remove 再 add /
+>   mtime 可证明构建新鲜 / Loader row 必须是裸包名 / 备份即安全”等旧结论；
+>   以本头部说明和 `docs/official-plugin-contract-0.2.md`、`docs/security-model.md`、
+>   `docs/distribution-contract.md` 为准。
+> - 旧版设置页/工具骨架示例只具历史价值；当前契约见
+>   `docs/official-plugin-contract-0.2.md` 与官方 `packages/` 源码。
+> - 权限/资源字段只是声明，Harness 不强制执行；不能把 `dsh.plugin.yaml` 当作沙箱。
+> - 静态检查不是认证；`READY_TO_MODIFY` 只表示未发现静态阻断项。
+>
+> 官方合同、项目策略、历史经验现在分层记录：官方合同固定在上述基线索引；项目策略
+> 在 README/`docs/security-model.md`；本文其余章节仅作历史经验。
 
 > 1.3.2 变更：增加 CLIENT_SERVICE_EAGER_LOOKUP——apply/顶层缓存非框架 client 服务会把 activate 时序中的 undefined 固化为 null；应点击时重新取值或 ctx.inject。
 >

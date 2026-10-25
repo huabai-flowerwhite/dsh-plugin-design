@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "collectedAt": "2026-10-25T07:07:42.0895678Z",
+  "note": "window titles redacted; only Desktop carrier/host/renderer processes retained",
+  "processes": [
+    {
+      "ProcessId": 27360,
+      "ParentProcessId": 4588,
+      "CommandLine": "\"E:\\运行包\\DSHpc\\DeepSeek Harness.exe\" --updated"
+    },
+    {
+      "ProcessId": 31280,
+      "ParentProcessId": 27360,
+      "CommandLine": "\"E:\\运行包\\DSHpc\\DeepSeek Harness.exe\" --type=gpu-process --user-data-dir=\"C:\\Users\\YYZ\\AppData\\Roaming\\@deepseek-ai/dsh-desktop\" --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --field-trial-handle=2756,i,2696657966757299055,6801089219478016410,262144 --enable-features=AllowWindowCaptureExclusionInRemoteSessions,PdfUseShowSaveFilePicker --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,NetworkServiceSandbox,ScreenAIOCREnabled,Sp"
+    },
+    {
+      "ProcessId": 32524,
+      "ParentProcessId": 27360,
+      "CommandLine": "\"E:\\运行包\\DSHpc\\DeepSeek Harness.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --user-data-dir=\"C:\\Users\\YYZ\\AppData\\Roaming\\@deepseek-ai/dsh-desktop\" --standard-schemes=dsh-app --secure-schemes=dsh-app --cors-schemes=dsh-app --fetch-schemes=dsh-app --streaming-schemes=dsh-app --code-cache-schemes=dsh-app --field-trial-handle=2756,i,2696657966757299055,6801089219478016410,262144 --enable-features=AllowWindowCaptureExclusionInRemoteSessions,PdfUseShowSaveFilePicker --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccess"
+    },
+    {
+      "ProcessId": 41272,
+      "ParentProcessId": 27360,
+      "CommandLine": "\"E:\\运行包\\DSHpc\\DeepSeek Harness.exe\" --type=renderer --user-data-dir=\"C:\\Users\\YYZ\\AppData\\Roaming\\@deepseek-ai/dsh-desktop\" --standard-schemes=dsh-app --secure-schemes=dsh-app --cors-schemes=dsh-app --fetch-schemes=dsh-app --streaming-schemes=dsh-app --code-cache-schemes=dsh-app --app-path=\"E:\\运行包\\DSHpc\\resources\\app.asar\" --enable-sandbox --video-capture-use-gpu-memory-buffer --lang=zh-CN --device-scale-factor=2 --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=4 --launch-time-ticks=305879899632 --field-trial-handle=2756,i,2696657966757299055,680108921947801641"
+    },
+    {
+      "ProcessId": 38032,
+      "ParentProcessId": 27360,
+      "CommandLine": "\"E:\\运行包\\DSHpc\\DeepSeek Harness.exe\" --expose-internals E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-desktop-host\\lib\\index.js E:\\运行包\\DSHpc\\resources\\app.asar\\dsh C:\\Users\\YYZ\\.dsh\\profiles\\desktop E:\\运行包\\DSHpc\\resources\\runtime\\primary-runtime E:\\运行包\\DSHpc\\resources\\runtime\\primary-runtime\\dependencies\\pnpm\\bin\\pnpm.mjs E:\\运行包\\DSHpc\\resources\\runtime\\bin"
+    },
+    {
+      "ProcessId": 37344,
+      "ParentProcessId": 38032,
+      "CommandLine": "\"E:\\运行包\\DSHpc\\DeepSeek Harness.exe\" E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-subprocess-local\\lib\\runner.js -- C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -Command \"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [System.Text.UTF8Encoding]::new($false); $ev='E:\\creat\\Codex\\dsh设计插件优化建议\\updates\\dsh-0.2.1-rc.3\\evidence'; $procs = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'DeepSeek Harness.exe' } | Select-Object ProcessId,ParentProcessId,CommandLine; $titles = Get-Proce"
+    }
+  ],
+  "windows": [
+    {
+      "Id": 27360,
+      "ProcessName": "DeepSeek Harness",
+      "MainWindowTitle": "[redacted]"
+    },
+    {
+      "Id": 31280,
+      "ProcessName": "DeepSeek Harness",
+      "MainWindowTitle": "[redacted]"
+    },
+    {
+      "Id": 32524,
+      "ProcessName": "DeepSeek Harness",
+      "MainWindowTitle": "[redacted]"
+    },
+    {
+      "Id": 37344,
+      "ProcessName": "DeepSeek Harness",
+      "MainWindowTitle": "[redacted]"
+    },
+    {
+      "Id": 38032,
+      "ProcessName": "DeepSeek Harness",
+      "MainWindowTitle": "[redacted]"
+    },
+    {
+      "Id": 41272,
+      "ProcessName": "DeepSeek Harness",
+      "MainWindowTitle": "[redacted]"
+    }
+  ]
+}

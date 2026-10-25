@@ -1,0 +1,41 @@
+{
+  "packages": 64,
+  "found": {
+    "settings.section": [
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-agent-preset\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-settings-account\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-settings-general\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-settings-models\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-settings-plugins\\lib\\client.js"
+    ],
+    "sidebar.panellist.actions": [
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-entry-customization\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-sidebar\\lib\\client.js"
+    ],
+    "conversation.session.header.views.actions": [
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-conversation\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-entry-customization\\lib\\client.js"
+    ],
+    "sidebar.right.tab.guide.actions": [
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-entry-customization\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-sidebar-right\\lib\\client.js"
+    ],
+    "pickDirectory": [
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-directory-picker-native\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-workspace\\lib\\client.js"
+    ],
+    "uiWorkspace": [
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-agent-preset\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-chat\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-conversation\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-directory-picker-browse\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-directory-picker-native\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-entry-customization\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-schedule\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-sidebar\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-subagent\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-workflow-run\\lib\\client.js",
+      "E:\\运行包\\DSHpc\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-client-ui-workspace\\lib\\client.js"
+    ]
+  }
+}

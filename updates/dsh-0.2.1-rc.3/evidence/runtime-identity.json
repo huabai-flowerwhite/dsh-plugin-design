@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "collectedAt": "2026-10-25T07:07:32.142Z",
+  "probeProcess": {
+    "electron": "44.7.0",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0",
+    "v8": "15.2.124.28-electron.0",
+    "platform": "win32",
+    "arch": "x64",
+    "execPath": "E:\\运行包\\DSHpc\\DeepSeek Harness.exe",
+    "resourcesPath": "E:\\运行包\\DSHpc\\resources",
+    "note": "probe runs the installed Electron binary with ELECTRON_RUN_AS_NODE=1; versions are identical to the Desktop carrier"
+  },
+  "install": {
+    "path": "E:/运行包/DSHpc",
+    "appAsar": {
+      "path": "E:\\运行包\\DSHpc\\resources\\app.asar",
+      "bytes": 182434783,
+      "sha256": "04b32e3a872826ba15cfb2081c6a929a8d4ecaa65e09a2543e5a6b30e2eff1f0"
+    },
+    "versionFile": "44.7.0",
+    "desktopRuntimeFile": null,
+    "versionsJson": {
+      "schemaVersion": 1,
+      "node": "24.21.0",
+      "pnpm": "11.28.5"
+    },
+    "manifests": {
+      "desktop": {
+        "name": "@deepseek-ai/dsh-desktop",
+        "version": "0.2.1-rc.3",
+        "main": "lib/main.js",
+        "gitHead": null
+      },
+      "dshRoot": {
+        "name": "@deepseek-ai/dsh-desktop-runtime",
+        "version": "0.2.1-rc.3",
+        "main": null,
+        "gitHead": null
+      },
+      "appBoot": {
+        "name": "@deepseek-ai/dsh-app-boot",
+        "version": "0.2.1-rc.3",
+        "main": "lib/index.js",
+        "gitHead": null
+      },
+      "dshCli": {
+        "name": "@deepseek-ai/dsh",
+        "version": "0.2.1-rc.3",
+        "main": null,
+        "gitHead": null
+      },
+      "desktopHost": {
+        "name": "@deepseek-ai/dsh-desktop-host",
+        "version": "0.2.1-rc.3",
+        "main": "lib/index.js",
+        "gitHead": null
+      },
+      "pluginManager": {
+        "name": "@deepseek-ai/dsh-plugin-manager",
+        "version": "0.2.1-rc.3",
+        "main": "lib/index.js",
+        "gitHead": null
+      },
+      "clientModules": {
+        "name": "@deepseek-ai/dsh-client-modules",
+        "version": "0.2.1-rc.3",
+        "main": "lib/index.js",
+        "gitHead": null
+      }
+    }
+  },
+  "priorInstallStaging": {
+    "path": "E:/运行包/DSHpc.new-{31B7F16D-9EC4-476A-BD13-DC5A7E8BD37B}",
+    "exists": true,
+    "manifests": {
+      "desktop": {
+        "name": "@deepseek-ai/dsh-desktop",
+        "version": "0.2.1-rc.2",
+        "main": "lib/main.js",
+        "gitHead": null
+      },
+      "appBoot": {
+        "name": "@deepseek-ai/dsh-app-boot",
+        "version": "0.2.1-rc.2",
+        "main": "lib/index.js",
+        "gitHead": null
+      }
+    }
+  },
+  "pluginManagerSurface": {
+    "listBundles": true,
+    "listPlugins": true,
+    "installBundle": true,
+    "removeBundle": true,
+    "setBundleEnabled": true,
+    "setPluginEnabled": true,
+    "updateBundle": false,
+    "listVersions": false,
+    "inspect": true,
+    "registries": true,
+    "waitForInstall": true,
+    "cancelInstall": true
+  }
+}

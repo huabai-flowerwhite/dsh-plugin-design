@@ -1,0 +1,27 @@
+{
+  "name": "broken-package",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js"
+  },
+  "engines": {
+    "dsh": "^0.2.0"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "client": {
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "dsh-plugin-design": "^1.3.2"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    ".dsh-plugin-design"
+  ]
+}
