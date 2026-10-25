@@ -4,7 +4,7 @@ DSH 第三方插件维护助手。它帮助你先取得证据，再修改目标�
 精确计划 → 绑定批准 → 逐字节快照 → CAS 修改 → 分层校验 → 可恢复部署 →
 独立分发验证。
 
-> 版本 1.4.3。契约基线：官方发布标签 `dsh-v0.2.1-rc.3`（提交 `1f81c04`）；
+> 版本 1.4.4。契约基线：官方发布标签 `dsh-v0.2.1-rc.3`（提交 `1f81c04`）；
 > 本机实际验证运行时为 Desktop `0.2.1-rc.3`（Electron 44.7.0 / Node 24.21.0 /
 > win32-x64，来源 `asar:dsh-app-boot/package.json` 与安装清单）。历史 rc.2
 > 交付保留在 `outputs/`，不升级为 rc.3 证据。
@@ -73,7 +73,7 @@ DSH 第三方插件维护助手。它帮助你先取得证据，再修改目标�
   baseUrl 缓存包元数据，包含“这不是 Client 包”的负结果，直到 Host/Desktop
   重启才失效。修改 `dsh.client`、`exports["./client"]`、入口文件或安装新包后，
   刷新页面/HMR 不够，必须重启整个 Desktop/Host，再运行 `dshpd_ui_check`。
-- **真实 renderer 证据**：已在 rc.3 Web Host + 无头 Chromium 中打开真实 UI，验证设置页、扫描、分析、问题渲染、错误提示与 client-health 回执（1.4.3 修复了分析结果渲染崩溃和 HTTP 200 错误文案）。真实 Desktop 窗口/preload/原生目录选择仍未验证。
+- **真实 renderer 证据**：已在 rc.3 Web Host + 无头 Chromium 中打开真实 UI，验证设置页、扫描、分析、问题渲染、错误提示与 client-health 回执（1.4.3 修复了分析结果渲染崩溃和 HTTP 200 错误文案）。真实 Desktop 窗口/preload/原生目录选择仍未验证。1.4.4 另修复 `npm test` 下运行时指纹误取插件自身版本的问题。
 
 - **真实 Desktop/renderer**：HTTP 200、无窗口 Web Host、React stub 都不能替代
   真实桌面交互；未在隔离 Desktop 实例中实测时，该组合保持 `NOT_RUN`。
@@ -83,7 +83,7 @@ DSH 第三方插件维护助手。它帮助你先取得证据，再修改目标�
 优先使用官方插件管理器（不要先 remove 再 add）：
 
 ```sh
-dsh plugin --profile <profile> add /path/to/dsh-plugin-design-1.4.3.tgz
+dsh plugin --profile <profile> add /path/to/dsh-plugin-design-1.4.4.tgz
 ```
 
 `install.ps1` / `install.sh` 只是同一命令的封装：它们把 stdout 与退出码分开，
@@ -91,7 +91,7 @@ dsh plugin --profile <profile> add /path/to/dsh-plugin-design-1.4.3.tgz
 依赖本机源码目录，不能作为分发方式。安装/升级后需要重启对应客户端。
 
 本插件自身也可独立分发：`updates/dsh-0.2.1-rc.3/` 记录了对
-`dsh-plugin-design-1.4.3.tgz` 的 rc.3 干净环境验证（无作者源码、无 link、全新
+`dsh-plugin-design-1.4.4.tgz` 的 rc.3 干净环境验证（无作者源码、无 link、全新
 `DSH_HOME`）；`outputs/` 保留 rc.2 历史证据，不改写为 rc.3 通过。
 
 ## 使用流程
@@ -171,7 +171,7 @@ node scripts/recovery-drill.mjs <output-dir>
 node scripts/clean-env-matrix.mjs --cli-json-file <cli.json> --tgz <pkg.tgz> --probe /path
 ```
 
-测试包含 100 个用例/子测试：修改事务安全（计划绑定、身份、design 漂移、越界、
+测试包含 103 个用例/子测试：修改事务安全（计划绑定、身份、design 漂移、越界、
 junction、CAS、部分快照、篡改回滚、冲突、journal 恢复）、worker 扫描预算与
 取消、SemVer 差分、部署适配（含 rc.3 缺 `updateBundle`/`listVersions` 的能力
 协商）、分发审计与负例、隔离包加载、离线恢复、安装器退出码。真实 DSH 与干净

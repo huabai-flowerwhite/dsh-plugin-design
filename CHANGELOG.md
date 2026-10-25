@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.4 — 2026-10-25
+
+`npm test` 运行时指纹修复。
+
+### Fixed
+
+- npm 会设置 `npm_package_name=dsh-plugin-design`、`npm_package_version=1.4.3`；旧逻辑把后者当作运行中 DSH 版本，使兼容性从 UNKNOWN 变成 false，并让 `tests/host.test.mjs` 的 unknown-runtime 用例在 `npm test` 下失败（`node --test` 正常）。
+- 现在仅当 `npm_package_name` 属于已知 DSH 包（`@deepseek-ai/dsh`、`@deepseek-ai/dsh-desktop`、`@deepseek-ai/dsh-desktop-runtime`、`@deepseek-ai/dsh-app-boot`、`deepseek-harness`）时才采信 `npm_package_version`，并作为最后兜底；`DSH_VERSION`、`DSH_RUNTIME_VERSION`、asar manifest 优先。
+- 新增 `tests/runtime.test.mjs`：插件自身 npm 版本被忽略、DSH 包名被采信、`DSH_VERSION` 优先。
+- 验证：`npm test` 与 `node --test` 均 101/101 通过。
+
 ## 1.4.3 — 2026-10-25
 
 真实渲染器错误提示修复。

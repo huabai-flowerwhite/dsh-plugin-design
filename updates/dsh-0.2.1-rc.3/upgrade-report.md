@@ -1,7 +1,7 @@
 # DSH Desktop 0.2.1-rc.3 增量兼容报告
 
 日期：2026-10-25。基线：dsh-plugin-design **1.4.0**（rc.2 交付，历史证据保留于
-`E:/creat/Codex/dsh设计插件优化建议/outputs/`）→ 本轮 **1.4.3**。
+`E:/creat/Codex/dsh设计插件优化建议/outputs/`）→ 本轮 **1.4.4**。
 工作区：`E:/creat/DSH/rule/dsh-plugin-design`（交付物在 `updates/dsh-0.2.1-rc.3/`）。
 
 ## 1. 实际运行时身份（先确认，再验证）
@@ -56,7 +56,7 @@ resolveMeta(loaderName, baseUrl) {
 `ui-entry-customization` / `ui-sidebar` 等 2 个包中出现，属于**新增入口**，不是替换。
 证据：`evidence/rc3-slot-probe.json`。
 
-## 3. 必要修改（含真实渲染器发现的两个 bug）
+## 3. 必要修改（三个真实 bug）
 
 ### 3.1 部署适配器（1.4.1）
 
@@ -89,10 +89,36 @@ children 数组，再交给 `h()`”，并新增回归测试禁止对 `h()` 结�
 `HTTP 200`。现在优先 `error`，其次 `scan.reasons`，最后 `scan.status`；真实
 渲染器实测显示 `扫描状态：INCOMPLETE`。
 
-### 3.4 版本与边界
+### 3.4 npm 测试误取插件自身版本（1.4.4）
 
-- 版本 **1.4.3**；测试 **100** 个（新增 `tests/adapter.test.mjs` 7 项 +
-  client-build 回归 1 项）。
+GitHub/npm 验证时发现：`npm test` 下 `tests/host.test.mjs:86` 失败，`node --test`
+正常。根因在运行时指纹：
+
+```js
+if (nonEmpty(env.npm_package_version) !== null && nonEmpty(env.DSH_VERSION) === null) {
+  candidates.push({ version: env.npm_package_version.trim(), source: 'env:npm_package_version' })
+}
+```
+
+`npm test` 会设置 `npm_package_name=dsh-plugin-design` 和
+`npm_package_version=1.4.3`。旧逻辑把插件自身版本当作运行中 DSH 版本，
+`semverSatisfies('1.4.3', '>=0.2.5 <0.3.0')` 得 false，兼容性结论从 `null`
+（UNKNOWN）变成 `false`（不兼容），与该用例意图相反。
+
+修复：
+
+- 仅当 `npm_package_name` 属于已知 DSH 包（`@deepseek-ai/dsh`、
+  `@deepseek-ai/dsh-desktop`、`@deepseek-ai/dsh-desktop-runtime`、
+  `@deepseek-ai/dsh-app-boot`、`deepseek-harness`）时才采信
+  `npm_package_version`；插件自身包名被忽略。
+- 降为**最后兜底**：`DSH_VERSION`、`DSH_RUNTIME_VERSION`、asar manifest 优先。
+- 新增 `tests/runtime.test.mjs`（3 项）：插件版本被忽略、DSH 包名被采信、
+  `DSH_VERSION` 优先。
+- 验证：`node --test` 与 `npm test` 均 **103/103** 通过。
+
+### 3.5 版本与边界
+
+- 版本 **1.4.4**；测试 **103** 个。
 - 未扩大 `engines.dsh`，未改 DSH 核心/main/preload，未新增构建脚本授权，
   未削弱计划绑定/路径/CAS/快照/回滚/扫描预算约束。
 
@@ -100,41 +126,46 @@ children 数组，再交给 `h()`”，并新增回归测试禁止对 `h()` 结�
 
 | 项 | 结果 |
 |---|---|
-| 快速回归 `node --test` | **100 / 100 通过**，3.7 s（07:48:10.014–07:48:13.727Z） |
+| `node --test` | **103 / 103 通过**，3.6 s（08:03:01.578–08:03:05.213Z） |
+| `npm test` | **103 / 103 通过**，4.8 s（08:03:05.263–08:03:10.016Z） |
 | Client 产物一致性 | `lib/client.js is up to date`，0.1 s |
-| rc.3 Host：维护插件 1.4.3 | 安装→冷启动→`/info` 200→重启→卸载→再启动：**PASS**，11.8 s |
+| rc.3 Host：维护插件 1.4.4 | 安装→冷启动→`/info` 200→重启→卸载→再启动：**PASS**，12.6 s |
 | rc.3 Host：目标插件 1.0.0（Host+Client，包未变） | 同一流程 + `/dshpd-demo/health` 200：**PASS**，17.6 s |
-| rc.3 Host 运行时/能力探针 | runtime `0.2.1-rc.3`；adapter install/remove/enable=true，update/versionDiscovery=false；unsupported `updateBundle`,`listVersions`,`readBundleDetail`：**PASS**，5.4 s |
-| **真实 Chromium renderer（rc.3 Web Host）** | 设置页 “dsh plugin design” v1.4.3 渲染；扫描 5 个 fixture；分析 `BLOCKED issues 9` + 问题行；非法路径 `扫描状态：INCOMPLETE`；`/health` 回执 `activated=true, rendered=true`；**0 console 异常**：**PASS**，30.8 s |
+| rc.3 Host 运行时/能力探针 | runtime `0.2.1-rc.3`；adapter install/remove/enable=true，update/versionDiscovery=false；unsupported `updateBundle`,`listVersions`,`readBundleDetail`：**PASS**，6.2 s |
+| **真实 Chromium renderer（rc.3 Web Host）** | 设置页 “dsh plugin design” v1.4.4 渲染；扫描 5 个 fixture；分析 `BLOCKED issues 9` + 问题行；非法路径 `扫描状态：INCOMPLETE`；`/health` 回执 `activated=true, rendered=true`；**0 console 异常**：**PASS**，30.9 s |
 | 真实 Desktop 窗口/renderer | **NOT_RUN**：第二实例被单实例锁拒绝（exit 9，无 profile、无 CDP）；真实实例使用用户 live desktop profile，未重启、未修改，0.7 s 探测 |
 
 时间、命令与日志：`SUPPORT-MATRIX.md`、`validation/*/clean-env-evidence.json`、
 `evidence/rc3-host-info.json`、`evidence/browser-renderer/probe.json`、
-`evidence/desktop-isolated-probe.json`、`increment.diff`（1.4.0 → 1.4.3 实际产物
-差异：16 文件，+484/−48）。
+`evidence/desktop-isolated-probe.json`、`evidence/quick-regression.log`、
+`evidence/npm-test.log`、`increment.diff`（1.4.0 → 1.4.4 实际产物差异：
+18 文件，+584/−91）。
 
-### 渲染器证据说明
+### 渲染器与测试证据说明
 
 `evidence/browser-renderer/probe.mjs` 用 CDP 驱动无头 Chrome：打开 rc.3 Web Host
 的带 token URL → 欢迎页“继续” → 默认工作区 → 设置 → “dsh plugin design” →
 输入 `tests/fixtures` → 扫描 → 分析 `broken-package` → 输入不存在目录 → 关闭。
-产物：`probe.json`（含文本、按钮、健康回执、console 事件）与 `01…12` 截图。
-这是**真实浏览器渲染**，但仍**不是** Desktop 窗口/preload/原生目录选择。
+产物：`probe.json`（含测试包 SHA-256、文本、按钮、健康回执、console 事件）与
+`01…12` 截图。这是**真实浏览器渲染**，但仍**不是** Desktop 窗口/preload/原生目录选择。
+`evidence/quick-regression.log` 与 `evidence/npm-test.log` 分别记录
+`node --test` 和 `npm test` 的 103/103 结果。
 
 ## 5. 产物
 
 | 产物 | SHA-256 | 字节 |
 |---|---|---|
-| `artifacts/dsh-plugin-design-1.4.3.tgz` | `5f0a368db5224004cf664f997b89ba9f67c5b6205d1ac982dba77d0b713f3427` | 220250 |
+| `artifacts/dsh-plugin-design-1.4.4.tgz` | `5355cf0a0f5a179c8c2fbdcc5858b90f487e162b12d3458d04df00531639881c` | 221131 |
 | `artifacts/dshpd-demo-plugin-1.0.0.tgz`（复用未变包） | `7bff8c3bd441cec9510d8c88cb010c90c6052570e306e692a22044fefd372972` | 3633 |
 
 旧 `outputs/` 的 rc.2 安装包、manifest、hash、日志保持原样，未改写成 rc.3。
-旧 1.4.1/1.4.2 中间包已删除，交付目录只保留最终 1.4.3 与复用的目标包。
+旧 1.4.1/1.4.2/1.4.3 中间包已删除，交付目录只保留最终 1.4.4 与复用的目标包。
 
 ## 6. 对四个问题的回答
 
-1. **是否需要代码修改？** 需要：1.4.1 修适配器必需能力；真实渲染器又暴露并修复
-   了 1.4.2 的分析渲染崩溃和 1.4.3 的错误文案。均已包含在 1.4.3。
+1. **是否需要代码修改？** 需要：1.4.1 修适配器必需能力；真实渲染器暴露并修复
+   了 1.4.2 的分析渲染崩溃和 1.4.3 的错误文案；`npm test` 又暴露并修复了
+   1.4.4 的运行时指纹来源。均已包含在 1.4.4。
 2. **rc.3 Host 是否验证通过？** 通过（限定无窗口 `web` Host 载体）：维护插件与
    最小 Host+Client 目标包均完成安装、冷启动、功能探测、重启、卸载、再次启动；
    `/info` 实测 runtime `0.2.1-rc.3`。
@@ -145,14 +176,15 @@ children 数组，再交给 `h()`”，并新增回归测试禁止对 `h()` 结�
 4. **旧结论哪些保留、哪些更新？** 保留 1.4.0 的修改事务/安全/分发结论与 rc.2
    历史证据。更新：`DSHpc` 已是 rc.3（rc.2 在 `.new-{GUID}`）；Manager 的
    `updateBundle/listVersions` 仅属研究分支；Client 元数据负缓存到重启；
-   “无 renderer 证据”升级为“真实 Chromium Web renderer PASS、Desktop 仍 NOT_RUN”。
+   “无 renderer 证据”升级为“真实 Chromium Web renderer PASS、Desktop 仍 NOT_RUN”；
+   `npm test` 与 `node --test` 现在是同一结论（103/103）。
 
 ## 7. 剩余限制与恢复
 
 - 真实 Desktop 窗口/preload、原生目录选择、显式取消按钮、Linux/macOS、
-  npm/GitHub 渠道、真实 profile 升级、动态故障注入均 `NOT_RUN`。
+  npm/GitHub 渠道安装、真实 profile 升级、动态故障注入均 `NOT_RUN`。
 - 恢复：本次未改真实 profile；如需回退，把
   `C:\Users\YYZ\.dsh\profiles\node_modules\dsh-plugin-design` 的 junction 指向恢复为
-  1.4.0 源码或用 1.4.0 包重装，并重启 Desktop。临时 `DSH_HOME`、浏览器 user-data
+  旧版本源码或用旧包重装，并重启 Desktop。临时 `DSH_HOME`、浏览器 user-data
   与探测目录已删除；证据中的 host token 已脱敏，未包含 `.credentials.yaml`。
-- 发布：未上传 GitHub/Release/npm；`artifacts/` 只是本地准备材料。
+- 发布：本任务未上传 GitHub/Release/npm；`artifacts/` 只是本地准备材料。

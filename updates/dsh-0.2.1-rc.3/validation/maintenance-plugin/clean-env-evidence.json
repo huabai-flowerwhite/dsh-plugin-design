@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "mode": "dsh-host",
-  "runId": "dsh-host-96b0bbeb-0bc9-4141-b023-276e6849bc8e",
+  "runId": "dsh-host-b9577145-9d39-4bc3-855a-3185b63119fe",
   "cli": [
     "E:/运行包/DSHpc/DeepSeek Harness.exe",
     "--expose-internals",
     "E:/运行包/DSHpc/resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js"
   ],
-  "dshHome": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\validation\\maintenance-plugin\\state\\validation\\dsh-host-96b0bbeb-0bc9-4141-b023-276e6849bc8e\\home",
+  "dshHome": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\validation\\maintenance-plugin\\state\\validation\\dsh-host-b9577145-9d39-4bc3-855a-3185b63119fe\\home",
   "steps": [
     {
       "step": "install",
@@ -16,12 +16,12 @@
         "--profile",
         "web",
         "add",
-        "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.3.tgz"
+        "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.4.tgz"
       ],
       "code": 0,
       "timedOut": false,
-      "stdout": "[WARN] The store at C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11 is not used because packages cannot be hard linked from it into this project. Using the store at E:\\.pnpm-store\\v11 instead. Set storeDir to choose the store.\nProgress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: E:\\.pnpm-store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dsh-plugin-design 1.4.3\n\nDone in 598ms using pnpm v11.28.5\n",
-      "stderr": "dsh: initialized profile web at E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\validation\\maintenance-plugin\\state\\validation\\dsh-host-96b0bbeb-0bc9-4141-b023-276e6849bc8e\\home\\profiles\\web\n"
+      "stdout": "[WARN] The store at C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11 is not used because packages cannot be hard linked from it into this project. Using the store at E:\\.pnpm-store\\v11 instead. Set storeDir to choose the store.\nProgress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: E:\\.pnpm-store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dsh-plugin-design 1.4.4\n\nDone in 809ms using pnpm v11.28.5\n",
+      "stderr": "dsh: initialized profile web at E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\validation\\maintenance-plugin\\state\\validation\\dsh-host-b9577145-9d39-4bc3-855a-3185b63119fe\\home\\profiles\\web\n"
     },
     {
       "step": "boot-cold-start",
@@ -38,9 +38,9 @@
         "path": "/dsh-plugin-design/info",
         "status": 200,
         "ok": true,
-        "body": "{\"ok\":true,\"name\":\"dsh-plugin-design\",\"version\":\"1.4.3\",\"ruleset\":{\"version\":\"0.2.1-r2\",\"updatedAt\":\"2026-10-25\",\"dshRange\":\">=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)\",\"sources\":[\"https://github.com/deepseek-ai/deepseek-harness\",\"docs/user/develop/basic/publish.md\",\"docs/cookbook/adding-a-settings-card.md\",\"docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md\",\"docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md\",\"doc"
+        "body": "{\"ok\":true,\"name\":\"dsh-plugin-design\",\"version\":\"1.4.4\",\"ruleset\":{\"version\":\"0.2.1-r2\",\"updatedAt\":\"2026-10-25\",\"dshRange\":\">=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)\",\"sources\":[\"https://github.com/deepseek-ai/deepseek-harness\",\"docs/user/develop/basic/publish.md\",\"docs/cookbook/adding-a-settings-card.md\",\"docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md\",\"docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md\",\"doc"
       },
-      "stdout": "dsh web: http://127.0.0.1:61162/?token=[redacted]\n",
+      "stdout": "dsh web: http://127.0.0.1:60279/?token=[redacted]\n",
       "stderr": ""
     },
     {
@@ -58,9 +58,9 @@
         "path": "/dsh-plugin-design/info",
         "status": 200,
         "ok": true,
-        "body": "{\"ok\":true,\"name\":\"dsh-plugin-design\",\"version\":\"1.4.3\",\"ruleset\":{\"version\":\"0.2.1-r2\",\"updatedAt\":\"2026-10-25\",\"dshRange\":\">=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)\",\"sources\":[\"https://github.com/deepseek-ai/deepseek-harness\",\"docs/user/develop/basic/publish.md\",\"docs/cookbook/adding-a-settings-card.md\",\"docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md\",\"docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md\",\"doc"
+        "body": "{\"ok\":true,\"name\":\"dsh-plugin-design\",\"version\":\"1.4.4\",\"ruleset\":{\"version\":\"0.2.1-r2\",\"updatedAt\":\"2026-10-25\",\"dshRange\":\">=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)\",\"sources\":[\"https://github.com/deepseek-ai/deepseek-harness\",\"docs/user/develop/basic/publish.md\",\"docs/cookbook/adding-a-settings-card.md\",\"docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md\",\"docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md\",\"doc"
       },
-      "stdout": "dsh web: http://127.0.0.1:61165/?token=[redacted]\n",
+      "stdout": "dsh web: http://127.0.0.1:60282/?token=[redacted]\n",
       "stderr": ""
     },
     {
@@ -74,7 +74,7 @@
       ],
       "code": 0,
       "timedOut": false,
-      "stdout": "[WARN] The store at C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11 is not used because packages cannot be hard linked from it into this project. Using the store at E:\\.pnpm-store\\v11 instead. Set storeDir to choose the store.\n✓ Lockfile passes supply-chain policies (verified 7s ago)\nAlready up to date\n\ndependencies:\n- dsh-plugin-design 1.4.3\n\nDone in 465ms using pnpm v11.28.5\n",
+      "stdout": "[WARN] The store at C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11 is not used because packages cannot be hard linked from it into this project. Using the store at E:\\.pnpm-store\\v11 instead. Set storeDir to choose the store.\n✓ Lockfile passes supply-chain policies (verified 8s ago)\nAlready up to date\n\ndependencies:\n- dsh-plugin-design 1.4.4\n\nDone in 451ms using pnpm v11.28.5\n",
       "stderr": ""
     },
     {
@@ -94,7 +94,7 @@
         "ok": false,
         "body": ""
       },
-      "stdout": "dsh web: http://127.0.0.1:61170/?token=[redacted]\n",
+      "stdout": "dsh web: http://127.0.0.1:60286/?token=[redacted]\n",
       "stderr": ""
     }
   ],
@@ -110,7 +110,7 @@
           "path": "/dsh-plugin-design/info",
           "status": 200,
           "ok": true,
-          "body": "{\"ok\":true,\"name\":\"dsh-plugin-design\",\"version\":\"1.4.3\",\"ruleset\":{\"version\":\"0.2.1-r2\",\"updatedAt\":\"2026-10-25\",\"dshRange\":\">=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)\",\"sources\":[\"https://github.com/deepseek-ai/deepseek-harness\",\"docs/user/develop/basic/publish.md\",\"docs/cookbook/adding-a-settings-card.md\",\"docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md\",\"docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md\",\"doc"
+          "body": "{\"ok\":true,\"name\":\"dsh-plugin-design\",\"version\":\"1.4.4\",\"ruleset\":{\"version\":\"0.2.1-r2\",\"updatedAt\":\"2026-10-25\",\"dshRange\":\">=0.1.5-rc.1 <0.3.0 (verified against 0.2.1-rc.2 runtime; contract baseline 0.2.1-rc.3)\",\"sources\":[\"https://github.com/deepseek-ai/deepseek-harness\",\"docs/user/develop/basic/publish.md\",\"docs/cookbook/adding-a-settings-card.md\",\"docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md\",\"docs/upgrade-guide/v0.2.0-rc.2/subpath-plugin-display-manifest/guide.md\",\"doc"
         },
         "uninstallExit": 0,
         "hostStartedAfterUninstall": true,
@@ -120,12 +120,12 @@
   },
   "verified": true,
   "status": "PASS",
-  "finishedAt": "2026-10-25T07:44:59.087Z",
-  "evidencePath": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\validation\\maintenance-plugin\\state\\validation\\dsh-host-96b0bbeb-0bc9-4141-b023-276e6849bc8e\\evidence.json",
+  "finishedAt": "2026-10-25T08:01:36.481Z",
+  "evidencePath": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\validation\\maintenance-plugin\\state\\validation\\dsh-host-b9577145-9d39-4bc3-855a-3185b63119fe\\evidence.json",
   "artifact": {
-    "path": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.3.tgz",
-    "sha256": "5f0a368db5224004cf664f997b89ba9f67c5b6205d1ac982dba77d0b713f3427",
-    "bytes": 220250,
+    "path": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.4.tgz",
+    "sha256": "5355cf0a0f5a179c8c2fbdcc5858b90f487e162b12d3458d04df00531639881c",
+    "bytes": 221131,
     "expectedName": "dsh-plugin-design",
     "probePath": "/dsh-plugin-design/info"
   }

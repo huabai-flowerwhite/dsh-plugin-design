@@ -1,7 +1,7 @@
-# dsh plugin design — 设计自述（1.4.3）
+# dsh plugin design — 设计自述（1.4.4）
 
 本目录是 `dsh plugin design` 的持久化插件项目（npm 包 + 官方 bundle 形态），
-当前版本 `1.4.3`（DSH Desktop `0.2.1-rc.3` 增量兼容）。
+当前版本 `1.4.4`（DSH Desktop `0.2.1-rc.3` 增量兼容）。
 
 ## 定位
 
@@ -78,7 +78,7 @@ RELEASE_PREPARED`（`PUBLISHED` 只能由实际发布动作产生）。
 
 ## 验证
 
-单元/回归：100 个测试。真实环境（本轮）：Desktop `0.2.1-rc.3` / Electron 44.7.0 /
+单元/回归：103 个测试。真实环境（本轮）：Desktop `0.2.1-rc.3` / Electron 44.7.0 /
 Node 24.21.0 / win32-x64，配套运行时 + 全新 `DSH_HOME`，维护插件与最小
 Host+Client 目标插件各自完成安装→冷启动→探测→重启→卸载→再次启动；证据见
 `updates/dsh-0.2.1-rc.3/`。历史 rc.2 证据保留在 `outputs/`。

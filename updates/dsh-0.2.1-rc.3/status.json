@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "reviewDate": "2026-10-25",
-  "revision": "2026-10-25-r3-renderer-verified",
+  "revision": "2026-10-25-r3-npmtest-fixed",
   "primaryTarget": "Windows x64 DeepSeek Harness Desktop",
   "releaseTag": "dsh-v0.2.1-rc.3",
   "releaseCommit": "1f81c047fc48fa190a683e469daa699857e9afe8",
@@ -9,7 +9,7 @@
   "historicalVerifiedRuntime": "0.2.1-rc.2",
   "historicalCarrier": "headless Web Host using the rc.2 Desktop companion runtime",
   "historicalPluginVersion": "1.4.0",
-  "currentPluginVersion": "1.4.3",
+  "currentPluginVersion": "1.4.4",
   "observedInstallation": {
     "path": "E:/运行包/DSHpc",
     "desktopVersion": "0.2.1-rc.3",
@@ -39,18 +39,22 @@
     "rc3DesktopRendererReason": "second Desktop instance exited with code 9 without profile or CDP because the application holds a process-lifetime single-instance lock; the real instance uses the user's live desktop profile and was not restarted or modified",
     "rc3NativeDirectoryPicker": "NOT_RUN",
     "rc3ExplicitCancelControl": "NOT_RUN (no user-facing cancel button; in-flight requests abort on unmount/new request)",
+    "npmTestEntrypoint": "PASS",
+    "nodeTestEntrypoint": "PASS",
     "rc2HostRuntime": "PASS_HISTORICAL_OUTPUTS_UNCHANGED",
     "linuxMacos": "NOT_RUN",
     "dynamicFaultInjection": "NOT_RUN"
   },
   "adaptation": {
     "requiredCodeChange": true,
-    "summary": "1.4.1: deployment adapter no longer requires updateBundle/listVersions (absent in the rc.3 release manager) and reports capability matrix; ui_check explains the rc.3 client metadata negative cache. 1.4.2: fixed a real-renderer crash (h(...).concat) in FindingList when analysis returns findings. 1.4.3: readable scan error text instead of HTTP 200.",
+    "summary": "1.4.1: deployment adapter no longer requires updateBundle/listVersions (absent in the rc.3 release manager) and reports the capability matrix; ui_check explains the rc.3 client metadata negative cache. 1.4.2: fixed a real-renderer crash (h(...).concat) in FindingList. 1.4.3: readable scan error text instead of HTTP 200. 1.4.4: npm_package_version is trusted only for known DSH packages, so npm test no longer reports this plugin's own version as the running DSH build.",
     "files": [
+      "src/runtime/fingerprint.js",
       "src/deploy/adapter.js",
       "src/host.js",
       "src/client.js",
       "lib/client.js",
+      "tests/runtime.test.mjs",
       "tests/adapter.test.mjs",
       "tests/client-build.test.mjs",
       "tests/host.test.mjs",
@@ -69,9 +73,9 @@
   },
   "artifacts": {
     "maintenancePlugin": {
-      "path": "artifacts/dsh-plugin-design-1.4.3.tgz",
-      "sha256": "5f0a368db5224004cf664f997b89ba9f67c5b6205d1ac982dba77d0b713f3427",
-      "bytes": 220250
+      "path": "artifacts/dsh-plugin-design-1.4.4.tgz",
+      "sha256": "5355cf0a0f5a179c8c2fbdcc5858b90f487e162b12d3458d04df00531639881c",
+      "bytes": 221131
     },
     "targetPluginReused": {
       "path": "artifacts/dshpd-demo-plugin-1.0.0.tgz",
@@ -91,17 +95,19 @@
     "browserScreenshots": "evidence/browser-renderer/01-welcome.png ... 12-settings-closed.png",
     "maintenanceHostValidation": "validation/maintenance-plugin/clean-env-evidence.json",
     "targetHostValidation": "validation/target-plugin/clean-env-evidence.json",
-    "quickRegression": "evidence/quick-regression.log",
+    "nodeTestLog": "evidence/quick-regression.log",
+    "npmTestLog": "evidence/npm-test.log",
     "supportMatrix": "SUPPORT-MATRIX.md",
     "upgradeReport": "upgrade-report.md"
   },
   "timingsUtc": {
-    "quickRegression": { "start": "2026-10-25T07:48:10.014Z", "end": "2026-10-25T07:48:13.727Z", "seconds": 3.7, "tests": 100 },
-    "clientCheck": { "start": "2026-10-25T07:48:13.774Z", "end": "2026-10-25T07:48:13.869Z", "seconds": 0.1 },
-    "maintenanceHost": { "start": "2026-10-25T07:44:47.353Z", "end": "2026-10-25T07:44:59.117Z", "seconds": 11.8 },
+    "nodeTests": { "start": "2026-10-25T08:03:01.578Z", "end": "2026-10-25T08:03:05.213Z", "seconds": 3.6, "tests": 103 },
+    "npmTests": { "start": "2026-10-25T08:03:05.263Z", "end": "2026-10-25T08:03:10.016Z", "seconds": 4.8, "tests": 103 },
+    "clientCheck": { "start": "2026-10-25T08:03:10.027Z", "end": "2026-10-25T08:03:10.092Z", "seconds": 0.1 },
+    "maintenanceHost": { "start": "2026-10-25T08:01:23.891Z", "end": "2026-10-25T08:01:36.506Z", "seconds": 12.6 },
     "targetHost": { "start": "2026-10-25T07:11:40.207Z", "end": "2026-10-25T07:11:57.781Z", "seconds": 17.6 },
-    "hostInfoProbe": { "start": "2026-10-25T07:44:59.135Z", "end": "2026-10-25T07:45:04.537Z", "seconds": 5.4 },
-    "browserRenderer": { "start": "2026-10-25T07:48:48.032Z", "end": "2026-10-25T07:49:18.872Z", "seconds": 30.8 },
+    "hostInfoProbe": { "start": "2026-10-25T08:01:36.520Z", "end": "2026-10-25T08:01:42.686Z", "seconds": 6.2 },
+    "browserRenderer": { "start": "2026-10-25T08:02:24.879Z", "end": "2026-10-25T08:02:55.758Z", "seconds": 30.9 },
     "desktopProbe": { "start": "2026-10-25T07:12:59.070Z", "end": "2026-10-25T07:12:59.727Z", "seconds": 0.7 }
   },
   "historicalEvidenceRewritten": false,

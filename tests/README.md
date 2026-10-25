@@ -13,7 +13,7 @@ node scripts/clean-env-matrix.mjs --cli-json-file <cli.json> --tgz <pkg.tgz> --p
 测试没有网络依赖；`clean-env-matrix.mjs` 需要显式 DSH CLI argv，未提供时
 `dsh-host` 结果保持 `NOT_RUN`。
 
-## 覆盖（1.4.3）
+## 覆盖（1.4.4）
 
 | 文件 | 覆盖 |
 |---|---|
@@ -27,6 +27,7 @@ node scripts/clean-env-matrix.mjs --cli-json-file <cli.json> --tgz <pkg.tgz> --p
 | `install.test.mjs` | stdout 与退出码分离、失败不 remove、dry-run、bash 可用时同契约、脚本不含 remove-then-add |
 | `profiles.test.mjs` | patch 解析（insert/override/disabled）、installed/selected/enabled 分离、home patch 层、非法包名、旧写路径硬失败 |
 | `manifest.test.mjs` / `client-build.test.mjs` | 自身清单、bundle patch、产物漂移、危险模式、无 @deepseek-ai 运行时导入 |
+| `runtime.test.mjs` | npm 版本来源守卫：插件自身版本被忽略、仅已知 DSH 包名可采信、显式 DSH_VERSION 优先 |
 | `rules.test.mjs` / `services.test.mjs` | 规则集回归、服务目录与取值时机 |
 
 ## 断言原则

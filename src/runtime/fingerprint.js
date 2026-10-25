@@ -48,6 +48,25 @@ function nonEmpty(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 }
 
+// `npm_package_version` is only meaningful when the npm script belongs to a
+// DSH runtime package. Under `npm test` in any other project it is that
+// project's own version (e.g. this plugin's 1.4.x), which must never be
+// reported as the running DSH build.
+const DSH_NPM_PACKAGES = new Set([
+  '@deepseek-ai/dsh',
+  '@deepseek-ai/dsh-desktop',
+  '@deepseek-ai/dsh-desktop-runtime',
+  '@deepseek-ai/dsh-app-boot',
+  'deepseek-harness',
+])
+
+function npmRuntimeCandidate(env) {
+  const name = nonEmpty(env.npm_package_name)
+  const version = nonEmpty(env.npm_package_version)
+  if (name === null || version === null || !DSH_NPM_PACKAGES.has(name)) return null
+  return { version, source: 'env:npm_package_version' }
+}
+
 function readJson(path) {
   try {
     return JSON.parse(readFileSync(path, 'utf8'))
@@ -64,7 +83,9 @@ function readJson(path) {
  *      `version`/`commit`,
  *   2. environment markers set by the launcher (`DSH_VERSION`, `DSH_COMMIT`,
  *      `DSH_RUNTIME_VERSION`),
- *   3. the packaged app manifest reachable from `process.resourcesPath`.
+ *   3. the packaged app manifest reachable from `process.resourcesPath`,
+ *   4. `npm_package_version` only when `npm_package_name` is a known DSH
+ *      package (never this plugin's own npm version).
  *
  * A caller-supplied `requested` value is reported separately as `simulated`:
  * it can describe a target build for offline checks, never the running one.
@@ -86,9 +107,6 @@ export function runtimeFingerprint(options = {}) {
   }
   if (nonEmpty(env.DSH_VERSION) !== null) candidates.push({ version: env.DSH_VERSION.trim(), source: 'env:DSH_VERSION' })
   if (nonEmpty(env.DSH_RUNTIME_VERSION) !== null) candidates.push({ version: env.DSH_RUNTIME_VERSION.trim(), source: 'env:DSH_RUNTIME_VERSION' })
-  if (nonEmpty(env.npm_package_version) !== null && nonEmpty(env.DSH_VERSION) === null) {
-    candidates.push({ version: env.npm_package_version.trim(), source: 'env:npm_package_version' })
-  }
   const resourcesPath = nonEmpty(process.resourcesPath)
   if (resourcesPath !== null) {
     // Inside Electron, fs can read paths inside app.asar; plain Node cannot.
@@ -111,6 +129,10 @@ export function runtimeFingerprint(options = {}) {
   }
   if (nonEmpty(env.DSH_CLIENT_VERSION) !== null) {
     candidates.push({ version: env.DSH_CLIENT_VERSION.trim(), source: 'env:DSH_CLIENT_VERSION' })
+  }
+  if (candidates.length === 0) {
+    const npmCandidate = npmRuntimeCandidate(env)
+    if (npmCandidate !== null) candidates.push(npmCandidate)
   }
   const commit = nonEmpty(env.DSH_COMMIT) || nonEmpty(env.DSH_BUILD_COMMIT) || (runtimeInfo && nonEmpty(runtimeInfo.commit)) || null
   const version = candidates.length > 0 ? candidates[0].version : null

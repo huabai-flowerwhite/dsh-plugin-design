@@ -6,7 +6,7 @@ manifestVersion: 1
 plugin:
   id: com.example.dsh.plugin-design
   name: dsh plugin design
-  version: 1.4.3
+  version: 1.4.4
   description: >-
     DSH 第三方插件维护助手：有界证据扫描（worker/预算/覆盖率）、计划绑定的批准、
     逐字节快照与 CAS 修改、分层校验、官方 pluginManager 部署、独立恢复 CLI，

@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-design",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "type": "module",
   "description": "dsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.",
   "license": "MIT",

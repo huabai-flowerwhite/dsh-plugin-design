@@ -1,18 +1,18 @@
 {
   "schema": 1,
-  "startedAt": "2026-10-25T07:48:48.099Z",
+  "startedAt": "2026-10-25T08:02:24.955Z",
   "artifact": {
-    "path": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.3.tgz",
-    "sha256": "5f0a368db5224004cf664f997b89ba9f67c5b6205d1ac982dba77d0b713f3427",
-    "bytes": 220250
+    "path": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.4.tgz",
+    "sha256": "5355cf0a0f5a179c8c2fbdcc5858b90f487e162b12d3458d04df00531639881c",
+    "bytes": 221131
   },
-  "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-browser-N5R9ze\\home",
+  "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-browser-I20y9P\\home",
   "browserPath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "steps": [
     {
       "step": "01-welcome",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
+      "url": "http://127.0.0.1:50960/",
       "text": "探索未至之境\n预览版\n选择工作区\n标准模式\n选择一个工作区开始\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续",
       "buttons": [
         "打开侧边栏",
@@ -42,7 +42,7 @@
     {
       "step": "02-after-continue",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
+      "url": "http://127.0.0.1:50960/",
       "text": "探索未至之境\n预览版\n默认工作区\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续",
       "buttons": [
         "打开侧边栏",
@@ -79,7 +79,7 @@
     {
       "step": "05-plugins",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
+      "url": "http://127.0.0.1:50960/",
       "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续",
       "buttons": [
         "打开侧边栏",
@@ -127,7 +127,7 @@
     {
       "step": "06-account-menu",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
+      "url": "http://127.0.0.1:50960/",
       "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\nCtrl\n+\nAlt\n+\n,\n意见反馈\n登录",
       "buttons": [
         "打开侧边栏",
@@ -178,7 +178,7 @@
     {
       "step": "07-settings",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
+      "url": "http://127.0.0.1:50960/",
       "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\n权限\n选择新会话的默认权限模式\n工作区内修改\n语言\n中文\n外观\n浅色\n深色\n跟随系统\n字号大小\n仅影响会话内容的字号\n14\npx\n工作步骤展示\n选择希望看到多少工具调用细节\n详细\n工作步骤收起时机\n选择何时自动收起工作步骤\n回答结束后\n显示代码工作视图\n开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换\n快捷键\n\n查看和编辑当前可用的快捷键和输入操作\n\n编辑快捷键\n繁忙时的发送行为\n智能体运行时 Enter 键和发送按钮的行为；Cmd/Ctrl+Enter 使用另一行为\n排队发送\n性能与用量\n选择性能与用量信息展示的详细程度\n详细\n在使用官方模型 API 时上传 Session Log\n帮助改进 DeepSeek 模型与产品\n当前版本：0.2.1-rc.3",
       "buttons": [
         "打开侧边栏",
@@ -248,8 +248,8 @@
     {
       "step": "08-plugin-panel",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
-      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.3\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\n尚未扫描，或该目录下没有含 package.json / dsh.plugin.yaml 的插件项目。\n查看技术信息（工具 / 安装 / 安全）",
+      "url": "http://127.0.0.1:50960/",
+      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.4\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\n尚未扫描，或该目录下没有含 package.json / dsh.plugin.yaml 的插件项目。\n查看技术信息（工具 / 安装 / 安全）",
       "buttons": [
         "打开侧边栏",
         "新建会话",
@@ -316,8 +316,8 @@
     {
       "step": "09-scan-result",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
-      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.3\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\nbroken-package\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\broken-package\n分析\n规范修改\nclientengines.dsh\nlegacy-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\legacy-plugin\n分析\n规范修改\nDH-TP-SDK\ndshpd-demo-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\minimal-host-client\n分析\n规范修改\nbundleclientengines.dsh\nmodern-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\modern-plugin\n分析\n规范修改\nbundleclientengines.dsh\nremoved-api-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\removed-api-plugin\n分析\n规范修改\n查看技术信息（工具 / 安装 / 安全）",
+      "url": "http://127.0.0.1:50960/",
+      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.4\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\nbroken-package\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\broken-package\n分析\n规范修改\nclientengines.dsh\nlegacy-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\legacy-plugin\n分析\n规范修改\nDH-TP-SDK\ndshpd-demo-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\minimal-host-client\n分析\n规范修改\nbundleclientengines.dsh\nmodern-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\modern-plugin\n分析\n规范修改\nbundleclientengines.dsh\nremoved-api-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\removed-api-plugin\n分析\n规范修改\n查看技术信息（工具 / 安装 / 安全）",
       "buttons": [
         "打开侧边栏",
         "新建会话",
@@ -394,8 +394,8 @@
     {
       "step": "10-analyze-result",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
-      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.3\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\nbroken-package\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\broken-package\n分析\n规范修改\nclientengines.dsh\nBLOCKEDissues 9 · B1 / C0 / H0 / M2\nClient graph未注册（页面不会出现该 UI）· 无渲染回执（UNKNOWN）\nLOWpackage.json 缺少 description · package.json\nINFO未声明插件图标 · package.json\nBLOCKERclient bundle 文件不存在 · ./lib/client.js\nINFOclient 半体没有注册已知 UI 座位\nLOW未导出 ./package.json · package.json\nINFO未提供 dsh.plugin.yaml · dsh.plugin.yaml\n… 另有 3 条\nlegacy-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\legacy-plugin\n分析\n规范修改\nDH-TP-SDK\ndshpd-demo-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\minimal-host-client\n分析\n规范修改\nbundleclientengines.dsh\nmodern-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\modern-plugin\n分析\n规范修改\nbundleclientengines.dsh\nremoved-api-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\removed-api-plugin\n分析\n规范修改\n查看技术信息（工具 / 安装 / 安全）",
+      "url": "http://127.0.0.1:50960/",
+      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.4\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\nbroken-package\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\broken-package\n分析\n规范修改\nclientengines.dsh\nBLOCKEDissues 9 · B1 / C0 / H0 / M2\nClient graph未注册（页面不会出现该 UI）· 无渲染回执（UNKNOWN）\nLOWpackage.json 缺少 description · package.json\nINFO未声明插件图标 · package.json\nBLOCKERclient bundle 文件不存在 · ./lib/client.js\nINFOclient 半体没有注册已知 UI 座位\nLOW未导出 ./package.json · package.json\nINFO未提供 dsh.plugin.yaml · dsh.plugin.yaml\n… 另有 3 条\nlegacy-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\legacy-plugin\n分析\n规范修改\nDH-TP-SDK\ndshpd-demo-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\minimal-host-client\n分析\n规范修改\nbundleclientengines.dsh\nmodern-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\modern-plugin\n分析\n规范修改\nbundleclientengines.dsh\nremoved-api-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\removed-api-plugin\n分析\n规范修改\n查看技术信息（工具 / 安装 / 安全）",
       "buttons": [
         "打开侧边栏",
         "新建会话",
@@ -472,8 +472,8 @@
     {
       "step": "11-scan-error",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
-      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.3\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\nbroken-package\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\broken-package\n分析\n规范修改\nclientengines.dsh\nlegacy-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\legacy-plugin\n分析\n规范修改\nDH-TP-SDK\ndshpd-demo-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\minimal-host-client\n分析\n规范修改\nbundleclientengines.dsh\nmodern-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\modern-plugin\n分析\n规范修改\nbundleclientengines.dsh\nremoved-api-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\removed-api-plugin\n分析\n规范修改\n扫描状态：INCOMPLETE\n查看技术信息（工具 / 安装 / 安全）",
+      "url": "http://127.0.0.1:50960/",
+      "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续\n设置\n通用设置\n模型\n内置插件\nAgent 预设\ndsh plugin design\n打开配置文件\n关闭\ndsh plugin design\nv1.4.4\n帮你检查 DSH 插件是否符合官方规范、指出问题并给出改造方案；你确认后，它会按方案修改插件、迁移清单并做校验，出问题还能回滚。\n能帮你做什么\n检查现有插件：兼容性、安装方式、设置页 UI、安全与生命周期风险。\n生成改造方案：产出 design.md，写清要改哪些文件、为什么改、怎么验证。\n确认后动手：按 design.md 修改 / 规范已有插件，或继续开发新插件。\n在聊天框怎么用（3 步）\n第 1 步 · 让 Agent 分析并产出 design.md\n使用 dsh plugin design 插件，分析 <插件路径>，输出 design.md。先只分析，不要修改代码。\n如果插件没有 UI，design.md 会自动附「UI 方案建议」；Agent 应先描述入口与大致样貌，确认后再开发。\n第 2 步 · 你审核 design.md\n打开 design.md，看它准备改哪些文件、为什么改、怎么验证；有不同意见直接告诉 Agent，让它更新方案。\n第 3 步 · 确认后修改 / 规范 / 开发\ndesign.md 我已确认（含 UI 方案）。请按它修改 / 规范 / 开发 <插件>，完成后调用 dshpd_verify 校验；出错时用 dshpd_rollback 回滚。\n注意：产出 design.md 只是“施工图”，不是终点。确认后可以继续让 Agent 修改现有代码、按规范重构，或从零开发新插件。\n设置页能做什么\n扫描：列出某个目录下的第三方插件项目。\n分析：只读检查，显示总体结论和主要问题。\n规范修改：生成一段带路径的聊天框提示词，交给 Agent 继续。\n发现并分析第三方插件\n选择文件夹\n扫描\n扫描和分析都是只读的；“规范修改”只生成提示词，不会直接改文件。\nbroken-package\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\broken-package\n分析\n规范修改\nclientengines.dsh\nlegacy-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\legacy-plugin\n分析\n规范修改\nDH-TP-SDK\ndshpd-demo-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\minimal-host-client\n分析\n规范修改\nbundleclientengines.dsh\nmodern-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\modern-plugin\n分析\n规范修改\nbundleclientengines.dsh\nremoved-api-plugin\nE:\\creat\\DSH\\rule\\dsh-plugin-design\\tests\\fixtures\\removed-api-plugin\n分析\n规范修改\n扫描状态：INCOMPLETE\n查看技术信息（工具 / 安装 / 安全）",
       "buttons": [
         "打开侧边栏",
         "新建会话",
@@ -550,7 +550,7 @@
     {
       "step": "12-settings-closed",
       "title": "DeepSeek Harness",
-      "url": "http://127.0.0.1:59969/",
+      "url": "http://127.0.0.1:50960/",
       "text": "插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\ndsh-plugin-design\ndsh plugin design — DSH third-party plugin maintenance assistant: bounded evidence gathering, plan-bound approvals, byte snapshots, CAS edits, isolated validation, official deployment and portable distribution.\n预览版说明\n\nDeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。\n\n我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。\n\n继续",
       "buttons": [
         "打开侧边栏",
@@ -598,7 +598,7 @@
   ],
   "install": {
     "code": 0,
-    "stdout": "Progress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dsh-plugin-design 1.4.3\n\nDone in 589ms using pnpm v11.28.5\n"
+    "stdout": "Progress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dsh-plugin-design 1.4.4\n\nDone in 602ms using pnpm v11.28.5\n"
   },
   "host": {
     "urlFound": true,
@@ -621,17 +621,17 @@
       "ok": true,
       "health": {
         "present": true,
-        "ageMs": 13741,
+        "ageMs": 13743,
         "fresh": true,
         "activated": true,
         "rendered": true,
         "error": null,
-        "version": "1.4.3",
+        "version": "1.4.4",
         "buildRev": "0.2.1",
-        "receivedAt": "2026-10-25T07:49:02.644Z"
+        "receivedAt": "2026-10-25T08:02:39.503Z"
       }
     }
   },
   "consoleEvents": [],
-  "finishedAt": "2026-10-25T07:49:18.660Z"
+  "finishedAt": "2026-10-25T08:02:55.548Z"
 }

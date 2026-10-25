@@ -30,7 +30,7 @@ const TOOL_NAMES = [
 test('package.json follows the official 0.2.x plugin contract', () => {
   const pkg = JSON.parse(read('package.json'))
   assert.equal(pkg.name, 'dsh-plugin-design')
-  assert.equal(pkg.version, '1.4.3')
+  assert.equal(pkg.version, '1.4.4')
   assert.equal(pkg.type, 'module')
   assert.equal(pkg.license, 'MIT')
   assert.match(pkg.engines.dsh, />=0\.1\.5-rc\.1/)
@@ -54,7 +54,7 @@ test('dsh.plugin.yaml keeps the DH-TP-SDK engineering manifest in sync', () => {
   const raw = read('dsh.plugin.yaml')
   assert.match(raw, /^manifestVersion:\s*1\s*$/m)
   assert.match(raw, /^\s+id:\s*com\.example\.dsh\.plugin-design\s*$/m)
-  assert.match(raw, /^\s+version:\s*1\.4\.3\s*$/m)
+  assert.match(raw, /^\s+version:\s*1\.4\.4\s*$/m)
   assert.match(raw, /^\s+min:\s*0\.1\.5-rc\.1\s*$/m)
   assert.match(raw, /^\s+max:\s*"<0\.3\.0"\s*$/m)
   assert.match(raw, /^\s+apiLevel:\s*1\s*$/m)

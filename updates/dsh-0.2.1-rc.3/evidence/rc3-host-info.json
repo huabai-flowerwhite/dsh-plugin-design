@@ -1,30 +1,30 @@
 {
   "schema": 1,
-  "collectedAt": "2026-10-25T07:44:59.203Z",
+  "collectedAt": "2026-10-25T08:01:36.595Z",
   "cli": [
     "E:/运行包/DSHpc/DeepSeek Harness.exe",
     "--expose-internals",
     "E:/运行包/DSHpc/resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js"
   ],
-  "tgzPath": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.3.tgz",
+  "tgzPath": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.4.tgz",
   "artifact": {
-    "path": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.3.tgz",
-    "sha256": "5f0a368db5224004cf664f997b89ba9f67c5b6205d1ac982dba77d0b713f3427",
-    "bytes": 220250
+    "path": "E:\\creat\\DSH\\rule\\dsh-plugin-design\\updates\\dsh-0.2.1-rc.3\\artifacts\\dsh-plugin-design-1.4.4.tgz",
+    "sha256": "5355cf0a0f5a179c8c2fbdcc5858b90f487e162b12d3458d04df00531639881c",
+    "bytes": 221131
   },
-  "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-U4GDOr",
+  "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-sdtDou",
   "steps": [
     {
       "step": "install",
       "code": 0,
-      "stdout": "Progress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dsh-plugin-design 1.4.3\n\nDone in 618ms using pnpm v11.28.5\n",
-      "stderr": "dsh: initialized profile web at C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-U4GDOr\\profiles\\web\n"
+      "stdout": "Progress: resolved 0, reused 1, downloaded 0, added 0\nPackages: +1\n+\nPackages are hard linked from the content-addressable store to the virtual store.\n  Content-addressable store is at: C:\\Users\\YYZ\\AppData\\Local\\pnpm\\store\\v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 1, reused 1, downloaded 0, added 1, done\n\ndependencies:\n+ dsh-plugin-design 1.4.4\n\nDone in 1.2s using pnpm v11.28.5\n",
+      "stderr": "dsh: initialized profile web at C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-sdtDou\\profiles\\web\n"
     }
   ],
   "boot": {
-    "url": "http://127.0.0.1:61194/?token=[redacted]",
+    "url": "http://127.0.0.1:49309/?token=[redacted]",
     "exitCode": null,
-    "stdout": "dsh web: http://127.0.0.1:61194/?token=[redacted]\n",
+    "stdout": "dsh web: http://127.0.0.1:49309/?token=[redacted]\n",
     "stderr": ""
   },
   "info": {
@@ -32,7 +32,7 @@
     "body": {
       "ok": true,
       "name": "dsh-plugin-design",
-      "version": "1.4.3",
+      "version": "1.4.4",
       "ruleset": {
         "version": "0.2.1-r2",
         "updatedAt": "2026-10-25",
@@ -93,11 +93,11 @@
           "execPath": "E:\\运行包\\DSHpc\\DeepSeek Harness.exe",
           "resourcesPath": "E:\\运行包\\DSHpc\\resources",
           "carrier": "embedded-cli",
-          "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-U4GDOr",
-          "stateRoot": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-U4GDOr\\plugin-design-state",
+          "dshHome": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-sdtDou",
+          "stateRoot": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-sdtDou\\plugin-design-state",
           "profile": "desktop",
-          "cwd": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-U4GDOr",
-          "collectedAt": "2026-10-25T07:45:02.944Z"
+          "cwd": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-sdtDou",
+          "collectedAt": "2026-10-25T08:01:41.069Z"
         },
         "effectiveVersion": "0.2.1-rc.3",
         "capabilities": {
@@ -135,7 +135,7 @@
           }
         }
       },
-      "stateRoot": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-U4GDOr\\plugin-design-state",
+      "stateRoot": "C:\\Users\\YYZ\\AppData\\Local\\Temp\\dshpd-rc3-host-sdtDou\\plugin-design-state",
       "deploymentAdapter": {
         "available": true,
         "source": "pluginManager",
@@ -229,7 +229,7 @@
       "listVersions",
       "readBundleDetail"
     ],
-    "pluginVersion": "1.4.3"
+    "pluginVersion": "1.4.4"
   },
   "ok": true
 }

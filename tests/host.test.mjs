@@ -220,7 +220,7 @@ test('settings routes answer info/analyze/discover over the wire contract', asyn
     await harness.routes.get('/dsh-plugin-design/info').handler(makeRequest('GET', '/dsh-plugin-design/info'), info)
     assert.equal(info.statusCode, 200)
     const infoJson = JSON.parse(info.body)
-    assert.equal(infoJson.version, '1.4.3')
+    assert.equal(infoJson.version, '1.4.4')
     assert.equal(infoJson.tools.length, 18)
     assert.ok(infoJson.runtime.running)
     assert.equal(infoJson.deploymentAdapter.available, false)
