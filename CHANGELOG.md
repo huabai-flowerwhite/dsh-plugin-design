@@ -9,7 +9,11 @@
 - npm 会设置 `npm_package_name=dsh-plugin-design`、`npm_package_version=1.4.3`；旧逻辑把后者当作运行中 DSH 版本，使兼容性从 UNKNOWN 变成 false，并让 `tests/host.test.mjs` 的 unknown-runtime 用例在 `npm test` 下失败（`node --test` 正常）。
 - 现在仅当 `npm_package_name` 属于已知 DSH 包（`@deepseek-ai/dsh`、`@deepseek-ai/dsh-desktop`、`@deepseek-ai/dsh-desktop-runtime`、`@deepseek-ai/dsh-app-boot`、`deepseek-harness`）时才采信 `npm_package_version`，并作为最后兜底；`DSH_VERSION`、`DSH_RUNTIME_VERSION`、asar manifest 优先。
 - 新增 `tests/runtime.test.mjs`：插件自身 npm 版本被忽略、DSH 包名被采信、`DSH_VERSION` 优先。
-- 验证：`npm test` 与 `node --test` 均 101/101 通过。
+- 验证：`npm test` 与 `node --test` 均 103/103 通过（含服务目录与 eager lookup 用例）。
+
+### Docs
+
+- README 按 1.3.2 的叙事/视觉结构重写（30 秒判断、主线、目录前置、核心场景、3 步使用），并更新 1.4.4 的 plan/approve/mount/distribute/validate、UI health 分层与 rc.3 行为。
 
 ## 1.4.3 — 2026-10-25
 
